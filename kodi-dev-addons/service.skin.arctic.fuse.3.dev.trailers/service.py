@@ -2,12 +2,17 @@
 # Native Arctic Fuse 3 Background_Video renders the Kodi player for all widgets.
 # This service ONLY creates an opt-in Spotlight preview; it must relinquish the
 # player immediately on widget focus, item change, or leaving the Home window.
+import glob
 import json
+import os
+import re
+import sqlite3
 import time
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, quote
 
 import xbmc
 import xbmcgui
+import xbmcvfs
 
 TAG = "[AF3DEV.Trailer] "
 HOME_ID = 10000
@@ -22,6 +27,8 @@ START_TIMEOUT = 6.0
 TRANSIENT_LIST_GRACE = 2.0
 LATE_START_GRACE = 3.0
 STOP_SETTLE_SECONDS = 0.45
+STARTUP_GRACE_SECONDS = 12.0
+EMBY_VIDEO_DATABASE = None
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -41,23 +48,68 @@ def _preview_cutoff():
 
 
 def _normalize_trailer(uri):
+    """Allow playable Emby/Kodi media, never an optional YouTube dependency.
+
+    Emby Next Gen's set_RemoteTrailerURL can convert remote YouTube URLs
+    to plugin://plugin.video.youtube, whether or not the user uses YouTube.
+    Preview should simply keep the movie artwork in that case.
+    """
     uri = (uri or "").strip()
     if not uri:
         return ""
+    lower = uri.lower()
+    if "plugin.video.youtube" in lower:
+        return ""
     if uri.startswith("plugin://"):
-        return uri
+        # An installed Emby add-on may supply its own playable plugin URI.
+        if uri.startswith(("plugin://plugin.video.emby-next-gen/",
+                           "plugin://plugin.service.emby-next-gen/")):
+            return uri
+        return ""
     parsed = urlparse(uri)
     host = (parsed.hostname or "").lower()
-    if host in ("youtube.com", "www.youtube.com", "m.youtube.com",
-                "youtu.be", "www.youtu.be"):
-        video = (parsed.path.strip("/") if "youtu.be" in host
-                 else parse_qs(parsed.query).get("v", [""])[0])
-        if len(video) == 11 and all(c.isalnum() or c in "_-" for c in video):
-            return "plugin://plugin.video.youtube/play/?video_id=" + video
+    if host == "youtu.be" or host.endswith(".youtube.com") or host == "youtube.com":
         return ""
     if parsed.scheme in ("http", "https", "smb", "nfs", "file", "special"):
         return uri
+    if uri.startswith("/emby_addon_mode/"):
+        # Let Kodi's configured Emby pathsubstitution resolve this path.
+        return uri
     return ""
+
+
+def _tvshow_db_trailer(dbid, dbtype):
+    """Read Emby-synchronized tvshow.c16 directly from Kodi's Video DB.
+
+    Emby Next Gen writes trailer URLs into tvshow.c16 for Series. Unlike
+    movie details, Kodi's TV-show JSON-RPC does not expose this as a trailer
+    property. Open the database strictly read-only with a short timeout.
+    """
+    if dbtype not in ("tvshow", "series") or not str(dbid).isdecimal():
+        return ""
+    try:
+        dbdir = xbmcvfs.translatePath("special://database/")
+        paths = glob.glob(os.path.join(dbdir, "MyVideos*.db"))
+        versions = []
+        for path in paths:
+            m = re.search(r"MyVideos(\\d+)\\.db$", os.path.basename(path), re.IGNORECASE)
+            if m:
+                versions.append((int(m.group(1)), path))
+        if not versions:
+            return ""
+        path = max(versions)[1]
+        fileuri = "file:" + quote(path.replace("\\", "/"), safe="/:") + "?mode=ro"
+        connection = sqlite3.connect(fileuri, uri=True, timeout=0.08)
+        try:
+            row = connection.execute("SELECT c16 FROM tvshow WHERE idShow = ? LIMIT 1",
+                                     (int(dbid),)).fetchone()
+            return row[0] if row and row[0] else ""
+        finally:
+            connection.close()
+    except (OSError, sqlite3.Error, ValueError) as err:
+        _log("Kodi TV trailer lookup unavailable: " + type(err).__name__,
+             xbmc.LOGWARNING)
+        return ""
 
 
 def _movie_db_trailer(dbid, dbtype):
@@ -125,50 +177,28 @@ def _spotlight(home):
     }, "spotlight"
 
 
-def _monitor_trailer(info):
-    """TMDbHelper classic monitor publishes on Window(Home), even inside hubs.
-
-    Avoid using a stale monitor result from a previously selected TV show.
-    The Kodi movie-db lookup is not valid for DBType=tvshow; this monitor is
-    therefore the main fallback for series whose list items omit Trailer.
-    """
-    monitor = xbmcgui.Window(HOME_ID)
-    prop = monitor.getProperty
-    tmdb_id = prop("TMDbHelper.ListItem.Monitor.TMDb_ID").strip()
-    selected_id = info.get("tmdb_id", "").strip()
-    if tmdb_id and selected_id and tmdb_id != selected_id:
-        return "", "monitor_different_item"
-    # If both sides lack comparable IDs, do not use outdated window metadata
-    # for the next item. Titles must match before using a fallback trailer.
-    if not (tmdb_id and selected_id):
-        monitor_title = (prop("TMDbHelper.ListItem.Title") or
-                         prop("TMDbHelper.ListItem.base_Title") or
-                         prop("TMDbHelper.ListItem.base_label")).strip()
-        title = info.get("title", "").strip()
-        if not monitor_title or not title or monitor_title.casefold() != title.casefold():
-            return "", "monitor_not_ready"
-    for property_name in ("TMDbHelper.ListItem.Trailer", "TMDbHelper.ListItem.base_trailer"):
-        uri = _normalize_trailer(prop(property_name))
-        if uri:
-            return uri, "tmdb_monitor_home"
-    return "", "monitor_without_trailer"
-
-
 def _resolve_trailer(info, home):
-    for source, raw in (
-            ("spotlight", info["list_trailer"]),
-            ("kodi_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"]))):
+    # Only sources written by Emby into Kodi's item or video library.
+    # No TMDbHelper, no IMDb API, no YouTube plugin fallback.
+    candidates = (
+        ("emby_spotlight", info["list_trailer"]),
+        ("emby_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])),
+        ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"])),
+    )
+    for source, raw in candidates:
         candidate = _normalize_trailer(raw)
         if candidate:
             return candidate, source
-    trailer, source = _monitor_trailer(info)
-    return (trailer, source) if trailer else ("", source)
+    return "", "no_playable_emby_trailer"
+
+
 
 
 class SpotlightService:
     def __init__(self):
         self.monitor = xbmc.Monitor()
         self.player = xbmc.Player()
+        self.started_at = time.monotonic()
         self.home = xbmcgui.Window(HOME_ID)
         self.active_window_id = HOME_ID
         self.key = None
@@ -330,16 +360,15 @@ class SpotlightService:
                  "; autoscroll=" + str(_interval()) + "s; stop_at=" +
                  str(_preview_cutoff()) + "s")
 
-        # The TMDbHelper monitor updates asynchronously after a TV item is
-        # selected. Retry missing series trailers while this slide is active,
-        # instead of permanently recording a negative result on first tick.
+        # Emby may finish syncing a TV show after its item appears. Retry
+        # only the local Emby/Kodi video database lookup, with no web requests.
         if (not self.trailer and item["dbtype"] in ("tvshow", "season", "episode", "") and
                 now - self.last_lookup_at >= 1.5 and
                 now - self.changed_at < _preview_cutoff() - MIN_PLAY_SECONDS):
             self.last_lookup_at = now
             self.trailer, source = _resolve_trailer(item, self.home)
             if self.trailer:
-                _log("Series Spotlight trailer ready via " + source)
+                _log("Emby Series Spotlight trailer ready via " + source)
 
         if self.owned:
             try:
@@ -396,6 +425,11 @@ class SpotlightService:
                 cutoff - elapsed < MIN_PLAY_SECONDS or self.late_stop_until or
                 self.stop_queued):
             return
+        # Do not launch any preview during early Kodi/Emby startup.
+        # In the prior log a YouTube plugin request occurred just three
+        # seconds after service start, before add-ons had fully settled.
+        if now - self.started_at < STARTUP_GRACE_SECONDS:
+            return
         # Kodi's normal widget/media playback must never be preempted.
         if self.player.isPlaying():
             return
@@ -410,7 +444,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.4: global TMDb monitor fallback for series and delayed metadata retry")
+        _log("Service 0.4.5: Emby-only trailers; no YouTube dependency; startup guard")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
