@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.18"
+          DEV_VER = "3.4.2.19"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -74,6 +74,32 @@ jobs:
           assert "<label>Activer les trailers dans le Spotlight</label>" in setting_source
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
+          # Premium v2 is a pure XML skin change. The two action layouts
+          # must be mutually exclusive to avoid duplicate Kodi focus IDs.
+          import re
+          hub_xml = entries["1080i/Includes_Hubs.xml"].decode("utf-8")
+          texture_xml = entries["1080i/Includes_Textures.xml"].decode("utf-8")
+          ET.fromstring(hub_xml)
+          ET.fromstring(texture_xml)
+          assert hub_xml.count('<include name="Hub_Spotlight_Button_Premium">') == 1
+          assert hub_xml.count('<include content="Hub_Spotlight_Button_Premium" condition="Skin.HasSetting(Spotlight.PremiumButtons)">') == 2
+          assert hub_xml.count('<include content="Hub_Spotlight_Button_Circle" condition="!Skin.HasSetting(Spotlight.PremiumButtons)">') == 2
+          assert 'id="316"' in hub_xml and '<visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>' in hub_xml
+          premium_def = hub_xml.split('<include name="Hub_Spotlight_Button_Premium">',1)[1].split('</definition>',1)[0]
+          assert premium_def.count('<control type="button" id="$PARAM[id]">') == 1
+          assert '<textoffsetx>78</textoffsetx>' in premium_def
+          assert '<width>32</width>' in premium_def
+          assert '<height>72</height>' in premium_def
+          assert '<nested />' in premium_def
+          assert '<include condition="$PARAM[primary]">Texture_Highlight_Spotlight_Premium_Primary</include>' in premium_def
+          assert 'Texture_Highlight_Spotlight_Premium_Primary' in texture_xml
+          assert 'Texture_Highlight_Spotlight_Premium_Secondary' in texture_xml
+          for label, size in (('PlayButton', '272'), ('InfoButton', '306')):
+              assert ('<param name="width">' + size + '</param>') in hub_xml
+              assert ('$VAR[Label_FullscreenWidget_' + label + ']') in hub_xml
+          assert '<onclick>Skin.ToggleSetting(Spotlight.PremiumButtons)</onclick>' in setting_source
+          assert '<onclick>ReloadSkin()</onclick>' in setting_source
+          print("Spotlight Premium v2 layout PASSED: two aligned unified buttons, exclusive IDs, retained Standard, reload")
           assert "shortcuts/skinvariables-generator.json" in entries
           assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.8" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
@@ -366,10 +392,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.18"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.19"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.18.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.19.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
