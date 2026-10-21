@@ -17,7 +17,7 @@
             <platform>all</platform>
         </extension>
     </addon>
-    <addon id="skin.arctic.fuse.3.dev" name="Arctic Fuse 3 DEV (Original)" provider-name="jurialmunkey / ntls2000" version="3.4.2.13">
+    <addon id="skin.arctic.fuse.3.dev" name="Arctic Fuse 3 DEV (Original)" provider-name="jurialmunkey / ntls2000" version="3.4.2.14">
         <requires>
             <import addon="xbmc.gui" version="5.17.0" />
             <import addon="script.skinvariables" version="2.2.9" />
@@ -27,7 +27,7 @@
             <import addon="resource.images.arctic.splash" version="1.0.0" />
             <import addon="resource.images.studios.coloured" version="0.0.1" />
             <import addon="resource.font.robotocjksc" version="0.0.3" />
-            <import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.3" />
+            <import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.4" />
         </requires>
         <extension debugging="false" defaultthemename="Textures.xbt" effectslowdown="1" point="xbmc.gui.skin">
             <res aspect="16:9" default="true" folder="1080i" width="1920" height="1080" />
@@ -60,7 +60,7 @@
             </assets>
         </extension>
     </addon>
-    <addon id="service.skin.arctic.fuse.3.dev.trailers" name="AF3 DEV - Spotlight Trailers" version="0.4.3" provider-name="ntls2000">
+    <addon id="service.skin.arctic.fuse.3.dev.trailers" name="AF3 DEV - Spotlight Trailers" version="0.4.4" provider-name="ntls2000">
         <requires>
             <import addon="xbmc.python" version="3.0.1" />
         </requires>
