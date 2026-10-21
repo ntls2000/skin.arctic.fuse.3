@@ -7,21 +7,37 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.12`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.13`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.2); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.3); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.12**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.13**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.12/skin.arctic.fuse.3.dev-3.4.2.12.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.13/skin.arctic.fuse.3.dev-3.4.2.13.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.12 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.13 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## New in 3.4.2.13 — custom Hub trailers and Spotlight button styles
+
+Arctic Fuse 3 defines Home and four independent customizable hubs (`1101`, `1102`, `1103`, `1104`), each with its own Spotlight wraplist (ID `301`) and window-local `TMDbHelper.WidgetContainer` property. Previously service 0.4.2 explicitly rejected any window except Home, so assigning separate Spotlights to Film and TV Series hubs did not start previews.
+
+**Service 0.4.3** now detects the active Home/Hub window, gets the correct window-local selection property, and plays available trailers in each hub. It retains the validated native asynchronous Stop, configured autoscroll/early stop synchronized timer, and restores original widget playback upon leaving Spotlight. A hub switch cancels the prior hub's preview; each hub's selection clock starts independently. The skin's own native Spotlight autoscroll is disabled while auto-trailers are active for those windows, preventing competing slide timers.
+
+**Design setting:** Go to **Skin Settings > Menus > Style des boutons du Spotlight**. Select:
+- **Standard** (default): original circular Play/Info icons and underline focus.
+- **Premium**: more rectangular, understated icon backgrounds and rectangular focus, with exactly the same clickable Play and Information actions. Toggle freely; previous button choices do not affect trailer functionality.
+
+The existing **« Activer les trailers dans le Spotlight »** option remains global. A trailer only starts when the current Spotlight item or its available Kodi/TMDb metadata contains a playable trailer URL. TV-series items lacking trailer metadata remain static, even if their custom hub Spotlight is configured.
+
+GitHub Actions verifies each custom Hub 1101–1104, playback/Stop on each, switching to Home, the two design options, source XML validity, all configured timer values and archive integrity. **Visual rendering and video playback on Kodi 22 still require real-device confirmation.**
+
+**Installation:** Update Arctic Fuse 3 DEV to **3.4.2.13** and verify that **AF3 DEV - Spotlight Trailers** is **0.4.3**. Restart Kodi once. Try an item with a known trailer on your custom Film and Series hubs, then switch to widgets and back. Compare Standard and Premium buttons in the same Spotlight settings.
 
 ## Spotlight setting label update — 3.4.2.12
 
