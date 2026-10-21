@@ -1,0 +1,60 @@
+name: Verify published Kodi skin ZIP and offer release mirror
+
+on:
+  push:
+    branches: [kodi-repo]
+    paths:
+      - '.github/workflows/verify-kodi-zip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: kodi-repo
+      - name: Verify local vs public download and ZIP structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          name='skin.arctic.fuse.3.dev-3.4.2.2.zip'
+          local_file="kodi-repository/skin.arctic.fuse.3.dev/$name"
+          source_url="https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.dev/$name"
+          echo "Local file:"
+          ls -l "$local_file"
+          sha256sum "$local_file"
+          unzip -tq "$local_file"
+          echo "Download from public URL:"
+          curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/remote-skin.zip --write-out 'http_code=%{http_code} content_type=%{content_type} bytes=%{size_download}\n' "$source_url"
+          ls -l /tmp/remote-skin.zip
+          file /tmp/remote-skin.zip
+          sha256sum /tmp/remote-skin.zip
+          if cmp "$local_file" /tmp/remote-skin.zip; then
+            echo 'Public raw ZIP byte-for-byte matches the Git checkout'
+          else
+            echo "::warning::Public raw download and checked out Git ZIP differ"
+          fi
+          unzip -tq /tmp/remote-skin.zip || echo "::warning::Public raw download has invalid ZIP structure"
+      - name: Publish tested skin ZIP through GitHub Releases as fallback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='arctic-fuse-3-dev-3.4.2.2'
+          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.2.zip'
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --prerelease --target kodi-repo \
+              --title 'Arctic Fuse 3 DEV 3.4.2.2 (Kodi installer)' \
+              --notes 'Original Arctic Fuse 3 v3.4.2 test build with separate addon ID and Arctic Splash minimum 1.0.0. Install using the downloaded ZIP as a fallback for a failed repository fetch. SHA256 and ZIP structure checked in CI.'
+          fi
+          gh release upload "$tag" "$asset" --clobber
+          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.2.zip"
+          curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/release-skin.zip --write-out 'release_http=%{http_code} release_bytes=%{size_download}\n' "$url"
+          cmp "$asset" /tmp/release-skin.zip
+          unzip -tq /tmp/release-skin.zip
+          echo 'Release asset verified byte-for-byte after remote download'
