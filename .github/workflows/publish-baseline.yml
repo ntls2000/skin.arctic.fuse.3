@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.16"
+          DEV_VER = "3.4.2.17"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.6" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.7" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -75,7 +75,7 @@ jobs:
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.6" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.7" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -92,7 +92,7 @@ jobs:
               "position": "1", "title": "Emby Film", "dbid": "123", "dbtype": "movie",
               "list_trailer": "http://127.0.0.1:57342/dynamic/trailer/film.mp4",
               "movie_trailer": "http://127.0.0.1:57342/dynamic/trailer/film.mp4",
-              "autoscroll": "30s"
+              "autoscroll": "30s", "dialog_busy": False, "property_temporarily_blank": False
           }
           def condition(expr):
               if expr.startswith("Skin.HasSetting(Spotlight.AutoTrailer)"):
@@ -108,8 +108,21 @@ jobs:
           xbmc_mock.getCondVisibility = condition
           def get_label(expr):
               if expr == "Window.Property(TMDbHelper.WidgetContainer)":
+                  # Emby loading dialogs can hide foreground Window.Property.
+                  if state["dialog_busy"] or state["property_temporarily_blank"]:
+                      return ""
                   win = windows.get(state["active_window"])
                   return win.getProperty("TMDbHelper.WidgetContainer") if win else ""
+              if expr in ("Window(Home).Property(TMDbHelper.WidgetContainer)",
+                          "Window(11101).Property(TMDbHelper.WidgetContainer)",
+                          "Window(11102).Property(TMDbHelper.WidgetContainer)",
+                          "Window(11103).Property(TMDbHelper.WidgetContainer)",
+                          "Window(11104).Property(TMDbHelper.WidgetContainer)"):
+                  if state["property_temporarily_blank"]:
+                      return ""
+                  windowid = (10000 if "Home" in expr else
+                              int(expr.split("(")[1].split(")")[0]) - 10000)
+                  return windows[windowid].getProperty("TMDbHelper.WidgetContainer")
               return {
                   "Container(301).NumItems": state["num_items"],
                   "Container(301).ListItem.Title": state["title"],
@@ -199,8 +212,24 @@ jobs:
                   service.started_at -= 15.0
                   service._tick()
                   assert player.playing and player.plays[-1].endswith("/film.mp4")
+                  # The actual Kodi log showed DialogBusy temporarily hiding
+                  # foreground focus during video startup, causing a
+                  # destructive Stop/replay loop in the previous version.
+                  state["dialog_busy"] = True
+                  play_count = len(player.plays)
+                  stop_count = player.stops
                   service._tick()
-                  assert service.owned
+                  assert service.owned and player.playing
+                  assert player.stops == stop_count and len(player.plays) == play_count
+                  state["dialog_busy"] = False
+                  state["property_temporarily_blank"] = True
+                  service._tick()
+                  assert player.playing and service.key is not None
+                  state["property_temporarily_blank"] = False
+                  service._tick()
+                  assert service.owned and len(player.plays) == play_count
+                  assert player.stops == stop_count
+                  print("Emby DialogBusy regression PASSED: no Stop/replay loop")
                   service.changed_at -= 26.2
                   service._tick()
                   assert not player.playing and player.stops == 1
@@ -216,6 +245,9 @@ jobs:
                   assert service.home is windows[10000], "Custom hub must not instantiate a Python GUI Window"
                   assert namespace["_spotlight"](service.home)[1] == "spotlight"
                   assert service.trailer.endswith("/series.mp4")
+                  state["dialog_busy"] = True
+                  assert namespace["_spotlight"](service.home)[1] == "spotlight"
+                  state["dialog_busy"] = False
                   service.changed_at -= 2.0
                   service._tick()
                   assert player.playing and player.plays[-1].endswith("/series.mp4")
@@ -295,11 +327,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.16"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.17"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.16.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.17.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.6.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.7.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
