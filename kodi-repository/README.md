@@ -8,13 +8,13 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
 | Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.24`** |
-| Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.28`** |
+| Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.29`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Premium LAB as a separate repository skin
 
-**Premium LAB 3.4.2.28 is now directly installable from the NTLS2000 Kodi DEV Repository.** This LAB tests the user's outlined Spotlight actions: both 410×72px cards have a permanent visible 2px border (four separate graphics strokes) and a lightly transparent dark centre when unfocused. Only the focused card fills solid white with dark text and icon. Buttons 311/312, group 316, click/navigation and sizing remain unchanged from LAB 3.4.2.26. The previous LAB 3.4.2.27 pre-release used a white background beneath an alpha tint, so 3.4.2.28 replaces that layering with an actual outline. Kodi 22 appearance still awaits user approval. In Kodi use **Add-ons > Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins > Arctic Fuse 3 Premium LAB**. When Kodi displays cached repository results, use **Check for updates** first.
+**Premium LAB 3.4.2.29 is available directly from the NTLS2000 Kodi DEV Repository.** The two Spotlight buttons use a NEW 410×84px rounded design, with precisely named actions **Lecture** and **Informations**. Both buttons have an anti-aliased rounded white outline and translucent dark interior when not focused; the focused button alone has a rounded opaque white fill, dark label and icon. Two dedicated lightweight 96×84px PNGs (outline and fill) stretch with a 22px fixed-corner texture border; thus the curves are preserved even at 410px width. This replaces the square four-stroke outline of 3.4.2.28 without altering Kodi's original focus IDs 311 and 312, parent group 316, actions or navigation. Actual Kodi 22 appearance is still awaiting user confirmation. In Kodi use **Add-ons > Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins > Arctic Fuse 3 Premium LAB**. When Kodi displays cached repository results, use **Check for updates** first.
 
 This is a DIFFERENT skin addon ID (`skin.arctic.fuse.3.premium.lab`), not an upgrade to the tested stable `skin.arctic.fuse.3.dev` version **3.4.2.24**. Both packages are listed in the same Kodi `addons.xml` catalog with different IDs. Both depend on the shared, unchanged `service.skin.arctic.fuse.3.dev.trailers` **0.4.8**. Reinstall or switch back to Arctic Fuse 3 DEV using **Settings > Interface > Skin** if Premium LAB navigation misbehaves.
 
