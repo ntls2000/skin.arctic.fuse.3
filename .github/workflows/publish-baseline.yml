@@ -33,7 +33,7 @@ jobs:
           ORIGINAL_COMMIT = "1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.2"
+          DEV_VER = "3.4.2.3"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -74,7 +74,13 @@ jobs:
               assert archive.testzip() is None
               assert len(archive.namelist()) >= 3500
               assert archive.read(DEV_ID + "/addon.xml") == entries["addon.xml"]
+          # GNU unzip validation catches archive damage that Python ZipFile.testzip may miss.
+          subprocess.run(["unzip", "-tq", str(package)], check=True)
           assert package.stat().st_size < 100 * 1024 * 1024, "GitHub single-file limit exceeded"
+          # Remove the old invalid archives, which were committed before *.zip was marked binary.
+          for obsolete in target.glob("skin.arctic.fuse.3.dev-*.zip"):
+              if obsolete != package:
+                  obsolete.unlink()
           for art in ("addon.xml", "icon.png", "fanart.jpg"):
               (target / art).write_bytes(entries[art])
 
@@ -98,6 +104,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "release(kodi): baseline Arctic Fuse 3 3.4.2 as side-by-side DEV skin"
+            git commit -m "fix(kodi): publish unmodified binary ZIP baseline 3.4.2.3"
             git push origin HEAD:kodi-repo
           fi
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.3.zip > /tmp/git-stored-skin.zip
+          unzip -tq /tmp/git-stored-skin.zip
+          echo "Published Git blob is a valid ZIP archive"
