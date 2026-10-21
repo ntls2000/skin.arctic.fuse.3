@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.15"
+          DEV_VER = "3.4.2.16"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.5" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.6" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -75,7 +75,7 @@ jobs:
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.5" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.6" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -106,16 +106,21 @@ jobs:
                   return state["focus_widget"]
               return False
           xbmc_mock.getCondVisibility = condition
-          xbmc_mock.getInfoLabel = lambda expr: {
-              "Container(301).NumItems": state["num_items"],
-              "Container(301).ListItem.Title": state["title"],
-              "Container(301).ListItem.DBID": state["dbid"],
-              "Container(301).ListItem.DBType": state["dbtype"],
-              "Container(301).ListItem.Trailer": state["list_trailer"],
-              "Container(301).CurrentItem": state["position"],
-              "Container(301).ListItem.FileNameAndPath": "videodb://library/item",
-              "Skin.String(AutoScrollTime)": state["autoscroll"],
-          }.get(expr, "")
+          def get_label(expr):
+              if expr == "Window.Property(TMDbHelper.WidgetContainer)":
+                  win = windows.get(state["active_window"])
+                  return win.getProperty("TMDbHelper.WidgetContainer") if win else ""
+              return {
+                  "Container(301).NumItems": state["num_items"],
+                  "Container(301).ListItem.Title": state["title"],
+                  "Container(301).ListItem.DBID": state["dbid"],
+                  "Container(301).ListItem.DBType": state["dbtype"],
+                  "Container(301).ListItem.Trailer": state["list_trailer"],
+                  "Container(301).CurrentItem": state["position"],
+                  "Container(301).ListItem.FileNameAndPath": "videodb://library/item",
+                  "Skin.String(AutoScrollTime)": state["autoscroll"],
+              }.get(expr, "")
+          xbmc_mock.getInfoLabel = get_label
           xbmc_mock.executeJSONRPC = lambda req: json.dumps({
               "result": {"moviedetails": {"trailer": state["movie_trailer"]}}})
           class Player:
@@ -152,7 +157,14 @@ jobs:
           xbmc_mock.Monitor = lambda: None
           gui_mock = types.ModuleType("xbmcgui")
           windows = {w:Win() for w in (10000,1101,1102,1103,1104)}
-          gui_mock.Window = lambda number: windows[number]
+          def fake_python_window(number):
+              # Reproduce user's Kodi 22: xbmcgui.Window(1102) raises
+              # "Window id does not exist" even while Custom_1102_Hub.xml
+              # is active as Kodi GUI window 11102.
+              if number != 10000:
+                  raise RuntimeError("Window id does not exist")
+              return windows[number]
+          gui_mock.Window = fake_python_window
           fs_mock = types.ModuleType("xbmcvfs")
           old_modules = {k:sys.modules.get(k) for k in ("xbmc","xbmcgui","xbmcvfs")}
           sys.modules.update({"xbmc":xbmc_mock,"xbmcgui":gui_mock,"xbmcvfs":fs_mock})
@@ -200,6 +212,9 @@ jobs:
                   state.update({"active_window":1102, "title":"Emby Serie",
                                 "position":"2", "dbtype":"tvshow", "list_trailer":""})
                   service._tick()
+                  assert service.active_window_id == 1102
+                  assert service.home is windows[10000], "Custom hub must not instantiate a Python GUI Window"
+                  assert namespace["_spotlight"](service.home)[1] == "spotlight"
                   assert service.trailer.endswith("/series.mp4")
                   service.changed_at -= 2.0
                   service._tick()
@@ -209,6 +224,7 @@ jobs:
                   windows[1102].setProperty("TMDbHelper.WidgetContainer","501")
                   service._tick()
                   assert not player.playing, "Must stop on native widget focus"
+                  assert namespace["_spotlight"](service.home)[1] == "native_widget"
                   service.stop_queued_at -= 1.0
                   windows[1102].setProperty("TMDbHelper.WidgetContainer","301")
                   # A YouTube-only trailer from Emby must simply be ignored.
@@ -222,6 +238,7 @@ jobs:
                   service.changed_at -= 31.0
                   service._tick()
                   assert action_log.count("Control.Move(301,1)") >= 2
+                  print("Kodi custom Hub regression PASSED: window 1102 active, xbmcgui.Window(1102) unavailable, focus read via Window.Property")
                   print("Emby-only regression PASSED: TV database, no YouTube, early startup guard, Stop and hub timing")
           finally:
               for name, previous in old_modules.items():
@@ -278,11 +295,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.15"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.16"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.15.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.16.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.5.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.6.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
