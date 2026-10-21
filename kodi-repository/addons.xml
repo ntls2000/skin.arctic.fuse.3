@@ -17,14 +17,14 @@
             <platform>all</platform>
         </extension>
     </addon>
-    <addon id="skin.arctic.fuse.3.dev" name="Arctic Fuse 3 DEV (Original)" provider-name="jurialmunkey / ntls2000" version="3.4.2.1">
+    <addon id="skin.arctic.fuse.3.dev" name="Arctic Fuse 3 DEV (Original)" provider-name="jurialmunkey / ntls2000" version="3.4.2.2">
         <requires>
             <import addon="xbmc.gui" version="5.17.0" />
             <import addon="script.skinvariables" version="2.2.9" />
             <import addon="script.texturemaker" version="0.2.9" />
             <import addon="plugin.video.themoviedb.helper" version="6.17.9" />
             <import addon="resource.images.weathericons.white" version="0.0.1" />
-            <import addon="resource.images.arctic.splash" version="1.0.6" />
+            <import addon="resource.images.arctic.splash" version="1.0.0" />
             <import addon="resource.images.studios.coloured" version="0.0.1" />
             <import addon="resource.font.robotocjksc" version="0.0.3" />
         </requires>
