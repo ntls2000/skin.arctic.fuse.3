@@ -28,7 +28,6 @@ TRANSIENT_LIST_GRACE = 2.0
 LATE_START_GRACE = 3.0
 STOP_SETTLE_SECONDS = 0.45
 STARTUP_GRACE_SECONDS = 12.0
-EMBY_VIDEO_DATABASE = None
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -85,14 +84,14 @@ def _tvshow_db_trailer(dbid, dbtype):
     movie details, Kodi's TV-show JSON-RPC does not expose this as a trailer
     property. Open the database strictly read-only with a short timeout.
     """
-    if dbtype not in ("tvshow", "series") or not str(dbid).isdecimal():
+    if dbtype not in ("tvshow", "series", "") or not str(dbid).isdecimal():
         return ""
     try:
         dbdir = xbmcvfs.translatePath("special://database/")
         paths = glob.glob(os.path.join(dbdir, "MyVideos*.db"))
         versions = []
         for path in paths:
-            m = re.search(r"MyVideos(\\d+)\\.db$", os.path.basename(path), re.IGNORECASE)
+            m = re.search(r"MyVideos(\d+)\.db$", os.path.basename(path), re.IGNORECASE)
             if m:
                 versions.append((int(m.group(1)), path))
         if not versions:
