@@ -7,21 +7,38 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.14`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.15`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.4); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.5); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.14**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.15**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.14/skin.arctic.fuse.3.dev-3.4.2.14.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.15/skin.arctic.fuse.3.dev-3.4.2.15.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.14 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.15 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Safety update 3.4.2.15: Emby-only trailers (YouTube not required)
+
+User reported Kodi 22 RC1 terminating at startup shortly after Spotlight launched a `plugin://plugin.video.youtube` trailer, even though they do not use the YouTube add-on. The prior `kodi.old.log` shows service 0.4.4 launching a trailer at 16:08:40, Kodi reporting `Unable to find plugin plugin.video.youtube`, and subsequent audio sink errors before the log ends. These observations identify an invalid automatic playback request but do **not** prove it is the only cause of the crash.
+
+**Root source:** The supplied Emby Next Gen 12.4.23 ZIP itself turns remote YouTube trailer URLs into `plugin://plugin.video.youtube/play/?video_id=...` in `core/common.py` `set_RemoteTrailerURL`. The user need not install YouTube for the DEV skin to function. To avoid this request, service **0.4.5**:
+
+- Refuses YouTube URLs and `plugin://plugin.video.youtube` trailers; no install prompt is triggered by our service. Items with no independently playable Emby trailer show static artwork.
+- Never fetches trailers from TMDb Helper or IMDb; uses the active Emby-synced list-item trailer and the Kodi movie video library.
+- For non-dynamic **Emby Séries**, reads the Kodi `tvshow.c16` field that Emby Next Gen populates with a trailer URL. It discovers the newest `MyVideosNNN.db` file and queries it **read-only** with a short SQLite timeout. It performs no writes to Kodi/Emby databases or direct calls to the Emby server.
+- Waits 12 seconds after the trailer companion service starts before launching any preview, allowing Emby and other Kodi services to initialize.
+- Keeps all previously tested 2-second early Stop, native asynchronous Stop without UI delays, full-duration unified carousel timer, and independent Film/TV hubs.
+- Requires **no YouTube add-on, no new plugin, no server credentials**.
+
+**Recovery:** If Kodi crashes before the update can be installed, exit Kodi and temporarily move the folder `%APPDATA%\Kodi\addons\service.skin.arctic.fuse.3.dev.trailers` outside the `addons` directory. Relaunch Kodi, install updated skin/service, restore the add-on by reinstallation, and restart. Keep Emby and Kodi userdata untouched. If this does not help, save `guisettings.xml` and change active skin to `skin.estuary` to isolate the problem.
+
+**Test:** After updating to skin 3.4.2.15 and service 0.4.5, restart Kodi, verify normal startup, watch 3 or 4 Spotlight slides and the custom Series hub, then check `kodi.log` if any error persists. Kodi is not proven stable merely because its add-on ZIP builds successfully.
 
 ## Fixed in 3.4.2.14 — TV-show Spotlight trailers and Premium button grouping
 
