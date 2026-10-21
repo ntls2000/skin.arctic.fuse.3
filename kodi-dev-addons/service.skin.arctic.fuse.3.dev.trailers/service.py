@@ -325,7 +325,7 @@ class SpotlightService:
             self.trailer, source = _resolve_trailer(item, self.home)
             self.last_lookup_at = now
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
-                                       "no trailer") + "; DBID " +
+                                       "no trailer (" + source + ")") + "; DBID " +
                  ("present" if item["dbid"] else "absent") +
                  "; autoscroll=" + str(_interval()) + "s; stop_at=" +
                  str(_preview_cutoff()) + "s")
@@ -410,7 +410,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.4: Home monitor trailer fallback and late TV metadata retry")
+        _log("Service 0.4.4: global TMDb monitor fallback for series and delayed metadata retry")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
