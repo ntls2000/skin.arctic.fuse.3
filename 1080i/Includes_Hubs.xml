@@ -378,6 +378,9 @@
         <param name="width">auto</param>
         <definition>
             <control type="group" id="$PARAM[groupid]">
+                <!-- Standard icon is omitted entirely in Premium so one
+                     rectangular button owns the background and label. -->
+                <visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>
                 <left>$PARAM[left]</left>
                 <width>$PARAM[size]</width>
                 <height>$PARAM[size]</height>
@@ -402,24 +405,6 @@
                         <texture background="true" colordiffuse="$VAR[ColorSelected]">$PARAM[image]</texture>
                     </control>
                 </control>
-                <!-- The premium style preserves the original focusable button
-                     IDs and click actions, changing only the icon geometry. -->
-                <control type="group">
-                    <visible>Skin.HasSetting(Spotlight.PremiumButtons)</visible>
-                    <control type="image">
-                        <width>$PARAM[size]</width>
-                        <height>64</height>
-                        <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="55FFFFFF">common/box.png</texture>
-                    </control>
-                    <control type="image">
-                        <width>56</width>
-                        <height>56</height>
-                        <centertop>50%</centertop>
-                        <bordersize>12</bordersize>
-                        <texture background="true" colordiffuse="main_fg_100">$PARAM[image]</texture>
-                    </control>
-                </control>
             </control>
             <control type="button" id="$PARAM[id]">
                 <width max="$PARAM[max]">$PARAM[width]</width>
@@ -430,7 +415,7 @@
                 <include condition="Skin.HasSetting(Spotlight.PremiumButtons)">Texture_Highlight_Spotlight_Premium</include>
                 <font>font_main_bold</font>
                 <textcolor>main_fg_90</textcolor>
-                <focusedcolor>main_fg_100</focusedcolor>
+                <focusedcolor>$VAR[AF3DEV_SpotlightFocusedLabelColor]</focusedcolor>
                 <label>$PARAM[label]</label>
                 <nested />
                 <left>20</left>
