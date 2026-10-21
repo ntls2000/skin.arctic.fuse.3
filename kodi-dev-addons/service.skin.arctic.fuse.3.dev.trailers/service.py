@@ -156,7 +156,11 @@ def _spotlight(home):
     # This is also updated by the native widget onfocus callbacks.
     # The hidden 301 wraplist keeps scrolling even while widgets are active.
     # Therefore do not infer focus from 301's item count.
-    active = home.getProperty("TMDbHelper.WidgetContainer").strip()
+    # Arctic Fuse 3 sets this on the CURRENT window, including custom hubs.
+    # Kodi may refuse xbmcgui.Window(1102) even though the Series hub is live:
+    # Custom_1102_Hub.xml is activated as GUI window 11102. Query the label
+    # used by the original skin instead of opening the custom window in Python.
+    active = xbmc.getInfoLabel("Window.Property(TMDbHelper.WidgetContainer)").strip()
     if active != "301":
         return None, "native_widget" if active else "not_spotlight"
     # Extra protection in the short interval before onfocus changes the property.
@@ -188,11 +192,22 @@ def _resolve_trailer(info, home):
         ("emby_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])),
         ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"], info["title"])),
     )
+    youtube_only = False
+    unsupported_only = False
     for source, raw in candidates:
         candidate = _normalize_trailer(raw)
         if candidate:
             return candidate, source
-    return "", "no_playable_emby_trailer"
+        if raw:
+            if "youtube" in raw.lower() or "youtu.be" in raw.lower():
+                youtube_only = True
+            else:
+                unsupported_only = True
+    if youtube_only:
+        return "", "emby_youtube_trailer_ignored"
+    if unsupported_only:
+        return "", "emby_trailer_format_unsupported"
+    return "", "no_emby_trailer_in_kodi_library"
 
 
 
@@ -305,11 +320,11 @@ class SpotlightService:
         now = time.monotonic()
         active_id = _active_window_id()
         if active_id != self.active_window_id:
-            # On hub switch, release the previous hub's trailer and property.
-            # Each hub stores TMDbHelper.WidgetContainer on its own window.
+            # The custom hub is a Kodi GUI window (e.g. window 11102),
+            # NOT a Python xbmcgui.Window(1102) instance. Never construct one.
+            # Read active focus through Kodi's Window.Property info-label.
             self._stop_preview("spotlight_window_changed")
             self.active_window_id = active_id
-            self.home = xbmcgui.Window(active_id if active_id is not None else HOME_ID)
             self._property(False)
             self.key = None
             self.attempted = False
@@ -360,6 +375,7 @@ class SpotlightService:
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
                                        "no trailer (" + source + ")") + "; DBID " +
                  ("present" if item["dbid"] else "absent") +
+                 "; DBType=" + (item["dbtype"] or "empty") +
                  "; autoscroll=" + str(_interval()) + "s; stop_at=" +
                  str(_preview_cutoff()) + "s")
 
@@ -447,7 +463,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.5: Emby-only trailers; no YouTube dependency; startup guard")
+        _log("Service 0.4.6: custom Hub focus via Window.Property, Emby-only TV diagnostics")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
