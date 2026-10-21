@@ -117,6 +117,9 @@
             <label>Style des boutons du Spotlight</label>
             <label2>$VAR[AF3DEV_SpotlightButtonStyle]</label2>
             <onclick>Skin.ToggleSetting(Spotlight.PremiumButtons)</onclick>
+            <!-- The two action layouts use exclusive conditional includes;
+                 reload the skin so Kodi re-expands the selected layout. -->
+            <onclick>ReloadSkin()</onclick>
         </include>
         <include content="Settings_Button" description="Spotlight Trailer Preview">
             <param name="dialog">false</param>
