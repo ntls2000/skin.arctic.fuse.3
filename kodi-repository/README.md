@@ -7,21 +7,39 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.17`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.18`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.7); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.17**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.18**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.17/skin.arctic.fuse.3.dev-3.4.2.17.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.18/skin.arctic.fuse.3.dev-3.4.2.18.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.17 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.18 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Series Spotlight Emby ThemeVideo support — 3.4.2.18
+
+The user's Kodi widget successfully plays the Emby Next Gen 12.4.23 `ThemeVideo` of TV series. These are independent of the video's normal `tvshow.c16` trailer value, which can contain a YouTube plugin URI even when the user stores a real `backdrops/theme.mp4` on the Emby server.
+
+**Companion service 0.4.8** reads the exact, already-indexed Emby Next Gen theme metadata:
+
+1. Only for Spotlight entries with `ListItem.DBType=tvshow` or `series`, obtain the selected Kodi `ListItem.DBID`.
+2. Open the user's `special://profile/Database/emby_*.db` databases strictly read-only. Emby Next Gen uses `SELECT EmbyId, EmbyMetaData FROM Video WHERE EmbyParentType='Series' AND KodiParentId=?`; this service also checks `EmbyExtraType='ThemeVideo'` for safety.
+3. Parse `EmbyMetaData` to retrieve `Id`, `Container`, and the first `MediaSources[].Id`. If the matching `special://profile/addon_data/plugin.service.emby-next-gen/EMBY-themes/{ServerId}_{Id}.{Container}` file exists, play that original downloaded file.
+4. Otherwise use the existing `servers_{ServerId}.json` connector settings to form the same authenticated `/emby/videos/{Id}/stream.{Container}` playback URI used by `hooks/themes.py`. No server discovery, no extra network request, no secret printed in the service's logs.
+5. Fall back to the existing direct Spotlight/Kodi video trailer source when there is no matching Emby ThemeVideo. YouTube-only links are still deliberately excluded.
+
+**Preserved Films:** The movie-resolution branch is unchanged from user-validated skin **3.4.2.17** / companion **0.4.7**. The background-video player, GUI window properties, Stop two seconds before slide change, widget handoff, and startup grace also remain unchanged.
+
+**Tests:** CI tests validate both the downloaded local theme and authenticated remote URI using fixtures matching Emby Next Gen's real `Video` SQLite schema, Kodi ID matching and type guards, and unchanged movie/background-video behavior, as well as Git ZIP integrity. These are mock tests; runtime testing in Kodi is still necessary.
+
+**Install:** Skin **3.4.2.18**, service **0.4.8**. Restart Kodi, let the **Séries** Spotlight show several known series with an Emby `ThemeVideo`, and check that they play one at a time and stop before the 30-second slide change. Then check a film to confirm non-regression. If needed, collect `kodi.log` lines with `[AF3DEV.Trailer]`: a successful series uses source `emby_series_theme`. If no source is found, the item continues to advance without playing anything.
 
 ## Playback recovery 3.4.2.17 — Emby loading dialog focus regression
 
