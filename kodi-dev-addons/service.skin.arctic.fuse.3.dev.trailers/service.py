@@ -1,5 +1,7 @@
-# Arctic Fuse 3 DEV: optional playback (setting defaults OFF); installed companion service.
-# Reads Kodi skin infolabels + local VideoLibrary JSON-RPC, never Emby credentials.
+# Arctic Fuse 3 DEV Spotlight trailer driver.
+# Native Arctic Fuse 3 Background_Video renders the Kodi player for all widgets.
+# This service ONLY creates an opt-in Spotlight preview; it must relinquish the
+# player immediately on widget focus, item change, or leaving the Home window.
 import json
 import time
 from urllib.parse import urlparse, parse_qs
@@ -10,11 +12,11 @@ import xbmcgui
 TAG = "[AF3DEV.Trailer] "
 HOME_ID = 10000
 HOME_PROPERTY = "AF3DEV.Trailer.Playing"
-POLL_SECONDS = 0.25
+POLL_SECONDS = 0.20
 START_DELAY = 1.1
 STOP_LEAD_SECONDS = 2.0
 MIN_PLAY_SECONDS = 1.5
-RECOVER_TIMEOUT = 4.0
+START_TIMEOUT = 6.0
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -28,7 +30,6 @@ def _interval():
 
 
 def _normalize_trailer(uri):
-    """Accept Kodi/media links. Resolve ordinary YouTube links through installed Kodi add-on."""
     uri = (uri or "").strip()
     if not uri:
         return ""
@@ -36,65 +37,77 @@ def _normalize_trailer(uri):
         return uri
     parsed = urlparse(uri)
     host = (parsed.hostname or "").lower()
-    if host in ("youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"):
-        video = parsed.path.strip("/") if "youtu.be" in host else parse_qs(parsed.query).get("v", [""])[0]
+    if host in ("youtube.com", "www.youtube.com", "m.youtube.com",
+                "youtu.be", "www.youtu.be"):
+        video = (parsed.path.strip("/") if "youtu.be" in host
+                 else parse_qs(parsed.query).get("v", [""])[0])
         if len(video) == 11 and all(c.isalnum() or c in "_-" for c in video):
             return "plugin://plugin.video.youtube/play/?video_id=" + video
         return ""
-    if parsed.scheme in ("https", "http", "smb", "nfs", "file", "special"):
+    if parsed.scheme in ("http", "https", "smb", "nfs", "file", "special"):
         return uri
     return ""
 
 
 def _movie_db_trailer(dbid, dbtype):
-    """Kodi VideoLibrary has a trailer even when Spotlight list items omit this infolabel."""
     if not dbid.isdecimal() or dbtype not in ("", "movie"):
         return ""
-    request = {
-        "jsonrpc": "2.0", "id": 1, "method": "VideoLibrary.GetMovieDetails",
-        "params": {"movieid": int(dbid), "properties": ["trailer"]},
-    }
+    request = {"jsonrpc": "2.0", "id": 1,
+               "method": "VideoLibrary.GetMovieDetails",
+               "params": {"movieid": int(dbid), "properties": ["trailer"]}}
     try:
-        response = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
-        return response.get("result", {}).get("moviedetails", {}).get("trailer", "") or ""
+        data = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
+        return data.get("result", {}).get("moviedetails", {}).get("trailer", "") or ""
     except Exception as err:
-        _log("Kodi video database trailer lookup failed: " + str(err), xbmc.LOGWARNING)
+        _log("Kodi movie trailer metadata lookup failed: " + str(err),
+             xbmc.LOGWARNING)
         return ""
 
 
-def _spotlight():
-    """A Spotlight wraplist is offscreen (width=1,left=-1920), so don't gate on Control.IsVisible."""
+def _spotlight(home):
+    """Return item data only while Spotlight is the active metadata source."""
     if not xbmc.getCondVisibility("Skin.HasSetting(Spotlight.AutoTrailer)"):
         return None, "disabled"
     if not xbmc.getCondVisibility("Window.IsActive(Home)"):
         return None, "not_home"
     if xbmc.getCondVisibility(
-            "Window.IsVisible(DialogVideoInfo.xml) | Window.IsVisible(DialogContextMenu.xml) | "
+            "Window.IsVisible(DialogVideoInfo.xml) | "
+            "Window.IsVisible(DialogContextMenu.xml) | "
             "Window.IsVisible(DialogSelect.xml) | System.ScreenSaverActive"):
         return None, "dialog"
-    num = xbmc.getInfoLabel("Container(301).NumItems").strip()
-    if not num.isdecimal() or int(num) < 1:
+    # The original skin tracks exactly which collection was selected.
+    # This is also updated by the native widget onfocus callbacks.
+    # The hidden 301 wraplist keeps scrolling even while widgets are active.
+    # Therefore do not infer focus from 301's item count.
+    active = home.getProperty("TMDbHelper.WidgetContainer").strip()
+    if active != "301":
+        return None, "native_widget" if active else "not_spotlight"
+    # Extra protection in the short interval before onfocus changes the property.
+    if xbmc.getCondVisibility(
+            "ControlGroup(500).HasFocus() | ControlGroup(600).HasFocus()"):
+        return None, "widget_focus"
+    count = xbmc.getInfoLabel("Container(301).NumItems").strip()
+    if not count.isdecimal() or int(count) == 0:
         return None, "no_spotlight_items"
-    label = lambda field: xbmc.getInfoLabel("Container(301).ListItem." + field).strip()
-    info = {
+    def label(field):
+        return xbmc.getInfoLabel("Container(301).ListItem." + field).strip()
+    return {
         "title": label("Title"),
         "path": label("FileNameAndPath"),
         "pos": xbmc.getInfoLabel("Container(301).CurrentItem").strip(),
         "dbid": label("DBID"),
         "dbtype": label("DBType").lower(),
         "list_trailer": label("Trailer") or label("Property(Trailer)"),
-    }
-    return info, "ready"
+    }, "spotlight"
 
 
 def _resolve_trailer(info, home):
-    candidates = [("spotlight", info["list_trailer"])]
-    candidates.append(("kodi_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])))
-    if home.getProperty("TMDbHelper.WidgetContainer") == "301":
-        candidates.extend([
-            ("tmdb_helper", home.getProperty("TMDbHelper.ListItem.Trailer")),
-            ("tmdb_base", home.getProperty("TMDbHelper.ListItem.base_trailer")),
-        ])
+    candidates = [("spotlight", info["list_trailer"]),
+                  ("kodi_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"]))]
+    candidates.extend([
+        ("tmdb_helper", home.getProperty("TMDbHelper.ListItem.Trailer")),
+        ("tmdb_base", home.getProperty("TMDbHelper.ListItem.base_trailer")),
+    ])
     for source, raw in candidates:
         candidate = _normalize_trailer(raw)
         if candidate:
@@ -109,119 +122,137 @@ class SpotlightService:
         self.home = xbmcgui.Window(HOME_ID)
         self.key = None
         self.changed_at = 0.0
+        self.trailer = ""
         self.attempted = False
-        self.preview_uri = ""
-        self.start_pending = False
-        self.requested_at = 0.0
-        self.owned_file = None
+        self.pending = False
+        self.pending_since = 0.0
         self.owned = False
+        self.owned_file = ""
         self.last_state = None
 
-    def _property(self, playing):
-        self.home.setProperty(HOME_PROPERTY, "true" if playing else "false")
+    def _property(self, active):
+        self.home.setProperty(HOME_PROPERTY, "true" if active else "false")
 
-    def _stop_preview(self):
-        self._property(False)
-        if self.owned:
-            try:
-                if self.player.isPlayingVideo():
-                    current = self.player.getPlayingFile()
-                    if current and current == self.owned_file:
-                        self.player.stop()
-            except RuntimeError:
-                pass
+    def _forget_preview(self):
+        self.pending = False
         self.owned = False
-        self.owned_file = None
-        self.start_pending = False
+        self.owned_file = ""
+        self._property(False)
+
+    def _stop_preview(self, reason):
+        """Stop our preview even when the plugin has resolved to an HTTP stream.
+
+        On transition out of Spotlight the native skin widget should take over.
+        Never issue a global PlayerControl(Stop) or stop unrelated user playback.
+        """
+        if not (self.pending or self.owned):
+            self._property(False)
+            return
+        try:
+            if self.player.isPlayingVideo():
+                playing = self.player.getPlayingFile()
+                fullscreen = xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")
+                taken_over = (self.owned and self.owned_file and playing
+                              and playing != self.owned_file)
+                if taken_over or fullscreen:
+                    _log("Relinquished video player (external playback)")
+                else:
+                    self.player.stop()
+                    _log("Stopped Spotlight trailer: " + reason)
+        except RuntimeError as err:
+            _log("Player stop failed: " + str(err), xbmc.LOGWARNING)
+        self._forget_preview()
 
     def _tick(self):
         now = time.monotonic()
-        item, state = _spotlight()
+        item, state = _spotlight(self.home)
         if state != self.last_state:
+            _log("Selection mode: " + state)
             self.last_state = state
-            _log("Spotlight state: " + state)
+
         if item is None:
-            if self.owned or self.start_pending:
-                self._stop_preview()
+            if self.pending or self.owned:
+                self._stop_preview("left_spotlight")
             self.key = None
             self.attempted = False
             return
 
         key = (item["path"], item["title"], item["pos"], item["dbid"])
         if key != self.key:
-            self._stop_preview()
+            self._stop_preview("spotlight_item_changed")
             self.key = key
             self.changed_at = now
             self.attempted = False
-            self.preview_uri, source = _resolve_trailer(item, self.home)
-            # This is intentionally a URI-free log: no account tokens, paths or URLs.
-            _log("New Spotlight item: trailer=" + ("available via " + source if self.preview_uri else
-                                                   "missing") + "; dbid=" + ("yes" if item["dbid"] else "no"))
+            self.trailer, source = _resolve_trailer(item, self.home)
+            _log("Spotlight item: " + ("trailer " + source if self.trailer else
+                                       "no trailer") + "; DBID " +
+                 ("present" if item["dbid"] else "absent"))
 
         if self.owned:
             try:
-                if not self.player.isPlayingVideo() or self.player.getPlayingFile() != self.owned_file:
-                    # User/media player changed; don't stop somebody else's playback.
-                    self._stop_preview()
+                if not self.player.isPlayingVideo():
+                    self._forget_preview()
+                    return
+                playing = self.player.getPlayingFile()
+                if self.owned_file and playing and playing != self.owned_file:
+                    self._forget_preview()
+                    _log("Kodi player switched to a different video; release ownership")
                     return
             except RuntimeError:
-                self._stop_preview()
+                self._forget_preview()
                 return
 
-        if self.start_pending:
-            if self.player.isPlayingVideo():
-                try:
-                    current = self.player.getPlayingFile()
-                    if current:
-                        self.owned_file = current
+        if self.pending:
+            try:
+                if self.player.isPlayingVideo():
+                    playing = self.player.getPlayingFile()
+                    if playing:
                         self.owned = True
-                        self.start_pending = False
+                        self.owned_file = playing
+                        self.pending = False
                         self._property(True)
-                        _log("Trailer preview started")
-                except RuntimeError:
-                    pass
-            if self.start_pending and now - self.requested_at > RECOVER_TIMEOUT:
-                self.start_pending = False
-                self._property(False)
-                _log("Trailer player did not start in 4s; check URL/player add-on", xbmc.LOGWARNING)
+                        _log("Spotlight preview playback confirmed")
+            except RuntimeError:
+                pass
+            if self.pending and now - self.pending_since >= START_TIMEOUT:
+                self._stop_preview("start_timeout")
+                _log("Trailer did not start within six seconds", xbmc.LOGWARNING)
 
         elapsed = now - self.changed_at
-        cutoff = min(max(0, _interval() - STOP_LEAD_SECONDS), 15.0)
+        cutoff = min(max(0.0, _interval() - STOP_LEAD_SECONDS), 15.0)
         if elapsed >= cutoff:
-            if self.owned or self.start_pending:
-                _log("Stopping preview before Spotlight advances")
-                self._stop_preview()
+            if self.pending or self.owned:
+                self._stop_preview("before_auto_scroll")
             return
 
-        if (self.attempted or not self.preview_uri or elapsed < START_DELAY or
+        if (self.attempted or not self.trailer or elapsed < START_DELAY or
                 cutoff - elapsed < MIN_PLAY_SECONDS):
             return
-        # Do not interrupt films/music/videos started by the user.
+        # Kodi's normal widget/media playback must never be preempted.
         if self.player.isPlaying():
             return
         self.attempted = True
-        self.start_pending = True
-        self.requested_at = now
+        self.pending = True
+        self.pending_since = now
         try:
-            _log("Requesting windowed trailer preview")
-            self.player.play(self.preview_uri, windowed=True)
+            _log("Opening Spotlight trailer with native background videowindow")
+            self.player.play(self.trailer, windowed=True)
         except Exception as err:
-            self.start_pending = False
-            _log("Trailer launch failed: " + str(err), xbmc.LOGWARNING)
+            self._forget_preview()
+            _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service v0.2.0 started; enable Spotlight : bandes-annonces auto in skin settings")
+        _log("Service 0.3.0: native widget video preserved; Spotlight-only preview")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
                 try:
                     self._tick()
                 except Exception as err:
-                    _log("Preview loop exception: " + str(err), xbmc.LOGERROR)
-                    if self.owned or self.start_pending:
-                        self._stop_preview()
+                    _log("Preview loop failed: " + str(err), xbmc.LOGERROR)
+                    self._stop_preview("exception")
         finally:
-            self._stop_preview()
+            self._stop_preview("service_stop")
             _log("Service stopped")
 
 
