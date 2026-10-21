@@ -333,7 +333,7 @@ class SpotlightService:
         # The TMDbHelper monitor updates asynchronously after a TV item is
         # selected. Retry missing series trailers while this slide is active,
         # instead of permanently recording a negative result on first tick.
-        if (not self.trailer and item["dbtype"] in ("tvshow", "season", "episode") and
+        if (not self.trailer and item["dbtype"] in ("tvshow", "season", "episode", "") and
                 now - self.last_lookup_at >= 1.5 and
                 now - self.changed_at < _preview_cutoff() - MIN_PLAY_SECONDS):
             self.last_lookup_at = now
