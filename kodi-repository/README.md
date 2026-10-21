@@ -7,21 +7,31 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.21`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.22`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.21**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.22**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.21/skin.arctic.fuse.3.dev-3.4.2.21.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.22/skin.arctic.fuse.3.dev-3.4.2.22.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.21 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.22 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Corrective layout — 3.4.2.22 (Kodi 22 user test pending)
+
+The user confirmed on Kodi 22 that version 3.4.2.21 STILL drew Information in a gray rectangle at the upper position, while "Reprendre la lecture" appeared below, disconnected from the intended Premium primary button. This release replaces the underlying layout mistake rather than tweaking widths again.
+
+Root cause: the original reusable `Hub_Spotlight_Button_Circle` include expanded into two sibling controls: one graphic group plus its real button. In Kodi's horizontal `grouplist` 310, that causes them to be treated as separate layout items. The 3.4.2.21 geometry and negative compensating offsets did not solve the mismatched layout.
+
+Correction: each existing include now expands into EXACTLY ONE permanent `group` (IDs 321 and 322), which contains its existing native focusable button (311 or 312) and decoration. The original Play group 316 remains intact, and both grouplist children have 160px layout height. In Premium each decoration is 420x72 with a 32x32 icon, labels inset 78px, a 20px spacer provided by the Play group; Standard remains selectable with its own icon and text layout. Navigation explicitly links 311 <-> 312 and keeps the original click/back/up/down/widget actions. Neither the native button controls nor their parent groups are conditionally hidden or replaced.
+
+**Only `1080i/Includes_Hubs.xml` and `1080i/Includes_Home.xml` changed for this build.** Frozen Emby Spotlight service **0.4.8**, movie and series ThemeVideo playback and auto-scroll behavior are unchanged. CI verifies the XML nesting and no focus duplication as well as the unchanged Emby regression suite and ZIP. **Visual and navigation behavior require user approval in Kodi 22; release is UNVALIDATED until the user's test.**
 
 ## Visual alignment fix — 3.4.2.21: Premium Spotlight buttons (awaiting Kodi feedback)
 
