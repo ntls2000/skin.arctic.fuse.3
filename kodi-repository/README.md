@@ -30,6 +30,22 @@ The existing `skin.arctic.fuse.3` add-on is not replaced. You can switch back to
 - Test skin: `kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.1.zip`
 - Kodi index and checksum: `kodi-repository/addons.xml`, `kodi-repository/addons.xml.md5`.
 
+## Known dependency fix: Arctic Splash 1.0.6 (Kodi 22)
+
+Arctic Fuse 3 DEV 3.4.2.1 requires `resource.images.arctic.splash >= 1.0.6`.
+As verified on 2026-10-21, the upstream `repository.jurialmunkey` catalog's `repo/zips` still indexes **v1.0.0**. The upstream source `jurialmunkey/resource.images.arctic.splash` is **v1.0.6**. Kodi cannot satisfy the minimum version via the upstream catalog alone.
+
+**Install the complete original-resource v1.0.6 package manually once:**
+
+- [Arctic Splash v1.0.6 Kodi ZIP](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-splash-1.0.6-dependency/resource.images.arctic.splash-1.0.6.zip)
+- [SHA256 checksum](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-splash-1.0.6-dependency/SHA256SUMS-arctic-splash.txt)
+- [Source revision](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-splash-1.0.6-dependency/arctic-splash-source-commit.txt)
+- Build workflow: `.github/workflows/package-arctic-splash.yml`.
+
+In Kodi: **Add-ons > Install from zip file**; select `resource.images.arctic.splash-1.0.6.zip`, then retry installing **Arctic Fuse 3 DEV (Original)**. This ZIP contains all 754 addon files (manifest plus original `resources/`), with ZIP integrity verified in GitHub Actions. No artwork files or version requirements were removed.
+
+Because the complete ZIP is approximately 124.6 MB (larger than GitHub's normal 100 MiB per-blob limit), it is hosted as a GitHub **Release asset** rather than an ordinary file in `kodi-repository/`. It is **not automatically installable through this repository's Kodi catalog** yet. Do not confuse a published release asset with a registered Kodi repository add-on. This procedure is a one-time manual dependency installation; the skin itself remains installable from the NTLS2000 repository.
+
 ## Dependencies and compatibility
 
 The original skin dependencies are preserved:
