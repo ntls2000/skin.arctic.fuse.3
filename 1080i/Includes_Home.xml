@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <includes>
 
+    <variable name="AF3DEV_SpotlightButtonStyle">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">Premium</value>
+        <value>Standard</value>
+    </variable>
+
     <variable name="AF3DEV_TabShapeLabel">
         <value condition="Skin.HasSetting(HomeSwitcher.PremiumTabs)">Premium - angles droits</value>
         <value>Original - arrondi</value>
