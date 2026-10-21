@@ -30,22 +30,22 @@ jobs:
           import xml.etree.ElementTree as ET
           from zipfile import ZipFile, ZIP_DEFLATED
 
-          ORIGINAL_COMMIT = "1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb"
+          SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.3"
+          DEV_VER = "3.4.2.4"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
           package = target / (DEV_ID + "-" + DEV_VER + ".zip")
-          source_tar = subprocess.check_output(["git", "archive", "--format=tar", ORIGINAL_COMMIT])
+          source_tar = subprocess.check_output(["git", "archive", "--format=tar", SOURCE_REF])
           source = tarfile.open(fileobj=io.BytesIO(source_tar), mode="r:")
           entries = {}
           for entry in source:
               if not entry.isfile():
                   continue
               name = entry.name
-              if name.startswith(".github/") or name in (".gitignore", ".gitattributes"):
+              if name.startswith((".github/", "kodi-dev-addons/")) or name in (".gitignore", ".gitattributes"):
                   continue
               payload = source.extractfile(entry).read()
               if name.endswith((".xml", ".json", ".xmltemplate", ".xsp", ".py", ".md", ".txt", ".yml", ".yaml")):
@@ -55,6 +55,8 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.1.0" optional="true" />'
+                      txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
               entries[name] = payload
@@ -67,6 +69,24 @@ jobs:
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
           assert "shortcuts/skinvariables-generator.json" in entries
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("optional") == "true" for x in manifest.findall("./requires/import"))
+          # Compile-check the service without importing Kodi runtime modules.
+          source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
+          service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
+          service_py = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/service.py"])
+          compile(service_py, "service.py", "exec")
+          companion = ET.fromstring(service_xml)
+          assert companion.get("id") == "service.skin.arctic.fuse.3.dev.trailers"
+          service_id = companion.get("id")
+          service_version = companion.get("version")
+          service_dir = out / service_id
+          service_dir.mkdir(parents=True, exist_ok=True)
+          (service_dir / "addon.xml").write_bytes(service_xml)
+          with ZipFile(service_dir / f"{service_id}-{service_version}.zip", "w", compression=ZIP_DEFLATED) as service_zip:
+              service_zip.writestr(f"{service_id}/addon.xml", service_xml)
+              service_zip.writestr(f"{service_id}/service.py", service_py)
+          with ZipFile(service_dir / f"{service_id}-{service_version}.zip") as service_check:
+              assert service_check.testzip() is None
           with ZipFile(package, "w", compression=ZIP_DEFLATED, compresslevel=6, allowZip64=True) as archive:
               for name, payload in sorted(entries.items()):
                   archive.writestr(DEV_ID + "/" + name, payload)
@@ -87,12 +107,13 @@ jobs:
           root = ET.Element("addons")
           root.append(ET.parse(out / "repository.ntls2000.kodi.dev" / "addon.xml").getroot())
           root.append(manifest)
+          root.append(companion)
           ET.indent(root, space="    ")
           catalog = ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
           (out / "addons.xml").write_bytes(catalog)
           (out / "addons.xml.md5").write_text(hashlib.md5(catalog).hexdigest() + "\n", encoding="ascii")
-          assert len(ET.parse(out / "addons.xml").getroot()) == 2
-          print("Published source SHA:", ORIGINAL_COMMIT)
+          assert len(ET.parse(out / "addons.xml").getroot()) == 3
+          print("Published source branch:", SOURCE_REF)
           print("Skin ID:", DEV_ID, "version:", DEV_VER, "files:", len(entries))
           print("Kodi ZIP bytes:", package.stat().st_size)
           print("Catalog MD5:", hashlib.md5(catalog).hexdigest())
@@ -102,11 +123,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
+          git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): publish unmodified binary ZIP baseline 3.4.2.3"
+            git commit -m "feat(kodi): publish premium tabs and companion Spotlight preview 3.4.2.4"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.3.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.4.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.1.0.zip > /tmp/git-stored-service.zip
+          unzip -tq /tmp/git-stored-service.zip
