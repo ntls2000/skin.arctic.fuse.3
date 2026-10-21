@@ -7,21 +7,33 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.16`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.17`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.6); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.7); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.16**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.17**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.16/skin.arctic.fuse.3.dev-3.4.2.16.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.17/skin.arctic.fuse.3.dev-3.4.2.17.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.16 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.17 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Playback recovery 3.4.2.17 — Emby loading dialog focus regression
+
+The user's `kodi(2).logg` showed that the 3.4.2.16 service repeatedly launched an Emby movie trailer, immediately got `Selection mode: not_spotlight` while Kodi showed `DialogBusy.xml`, queued a delayed native Stop and reopened the **same** trailer roughly every 3 seconds. This was a regression caused by reading `Window.Property(TMDbHelper.WidgetContainer)` on the **frontmost window**, which can be the busy dialog rather than the Home/Hub window.
+
+**Service 0.4.7** now reads `Window(Home).Property(TMDbHelper.WidgetContainer)` on Home or `Window(11101..11104).Property(TMDbHelper.WidgetContainer)` for custom hubs. These are Kodi's actual window IDs; it never instantiates `xbmcgui.Window(1102)`. It falls back to foreground `Window.Property` only if the window-specific value is empty. A short grace also preserves the preview and its slide timer if both labels are briefly absent. **Stop remains asynchronous and occurs at interval minus 2 seconds**, or on real widget focus/Hub change.
+
+The CI test reproduces the regression by forcing foreground `Window.Property` to be empty during active Emby playback, then verifying playback ownership stays active, no Stop command is queued and the same movie is not opened again. It additionally tests both labels missing momentarily, TV Hub window 11102, DB `tvshow.c16` lookup, unavailable Python window 1102, widget handoff and YouTube exclusion.
+
+**Series note:** The user log also shows `no trailer (emby_youtube_trailer_ignored)` for three selected TV shows. Emby/Kodi metadata for these items contains a YouTube-dependent trailer but no independent playable local Emby URL. This release does **not** re-enable YouTube or try to circumvent that limitation.
+
+**Test:** update to skin **3.4.2.17**, companion **0.4.7**; restart Kodi, let a movie with a local Emby trailer play and check that it runs continuously, stops 2s before the next slide and does not loop. Then test Series. If playback still stops abruptly, attach the new `kodi.log` rather than repeatedly adjusting options.
 
 ## Custom Emby Series Spotlight fix — 3.4.2.16
 
