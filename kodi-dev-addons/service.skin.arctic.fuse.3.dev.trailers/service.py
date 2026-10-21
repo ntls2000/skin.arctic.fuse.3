@@ -120,22 +120,49 @@ def _spotlight(home):
         "count": int(count),
         "dbid": label("DBID"),
         "dbtype": label("DBType").lower(),
+        "tmdb_id": label("UniqueID(tmdb)") or label("Property(TMDb_ID)") or label("Property(tmdb_id)"),
         "list_trailer": label("Trailer") or label("Property(Trailer)"),
     }, "spotlight"
 
 
+def _monitor_trailer(info):
+    """TMDbHelper classic monitor publishes on Window(Home), even inside hubs.
+
+    Avoid using a stale monitor result from a previously selected TV show.
+    The Kodi movie-db lookup is not valid for DBType=tvshow; this monitor is
+    therefore the main fallback for series whose list items omit Trailer.
+    """
+    monitor = xbmcgui.Window(HOME_ID)
+    prop = monitor.getProperty
+    tmdb_id = prop("TMDbHelper.ListItem.Monitor.TMDb_ID").strip()
+    selected_id = info.get("tmdb_id", "").strip()
+    if tmdb_id and selected_id and tmdb_id != selected_id:
+        return "", "monitor_different_item"
+    # If both sides lack comparable IDs, do not use outdated window metadata
+    # for the next item. Titles must match before using a fallback trailer.
+    if not (tmdb_id and selected_id):
+        monitor_title = (prop("TMDbHelper.ListItem.Title") or
+                         prop("TMDbHelper.ListItem.base_Title") or
+                         prop("TMDbHelper.ListItem.base_label")).strip()
+        title = info.get("title", "").strip()
+        if not monitor_title or not title or monitor_title.casefold() != title.casefold():
+            return "", "monitor_not_ready"
+    for property_name in ("TMDbHelper.ListItem.Trailer", "TMDbHelper.ListItem.base_trailer"):
+        uri = _normalize_trailer(prop(property_name))
+        if uri:
+            return uri, "tmdb_monitor_home"
+    return "", "monitor_without_trailer"
+
+
 def _resolve_trailer(info, home):
-    candidates = [("spotlight", info["list_trailer"]),
-                  ("kodi_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"]))]
-    candidates.extend([
-        ("tmdb_helper", home.getProperty("TMDbHelper.ListItem.Trailer")),
-        ("tmdb_base", home.getProperty("TMDbHelper.ListItem.base_trailer")),
-    ])
-    for source, raw in candidates:
+    for source, raw in (
+            ("spotlight", info["list_trailer"]),
+            ("kodi_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"]))):
         candidate = _normalize_trailer(raw)
         if candidate:
             return candidate, source
-    return "", "unavailable"
+    trailer, source = _monitor_trailer(info)
+    return (trailer, source) if trailer else ("", source)
 
 
 class SpotlightService:
@@ -148,6 +175,7 @@ class SpotlightService:
         self.changed_at = 0.0
         self.slide_advance_requested = False
         self.trailer = ""
+        self.last_lookup_at = 0.0
         self.attempted = False
         self.pending = False
         self.pending_since = 0.0
@@ -295,11 +323,23 @@ class SpotlightService:
             self.slide_advance_requested = False
             self.attempted = False
             self.trailer, source = _resolve_trailer(item, self.home)
+            self.last_lookup_at = now
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
                                        "no trailer") + "; DBID " +
                  ("present" if item["dbid"] else "absent") +
                  "; autoscroll=" + str(_interval()) + "s; stop_at=" +
                  str(_preview_cutoff()) + "s")
+
+        # The TMDbHelper monitor updates asynchronously after a TV item is
+        # selected. Retry missing series trailers while this slide is active,
+        # instead of permanently recording a negative result on first tick.
+        if (not self.trailer and item["dbtype"] in ("tvshow", "season", "episode") and
+                now - self.last_lookup_at >= 1.5 and
+                now - self.changed_at < _preview_cutoff() - MIN_PLAY_SECONDS):
+            self.last_lookup_at = now
+            self.trailer, source = _resolve_trailer(item, self.home)
+            if self.trailer:
+                _log("Series Spotlight trailer ready via " + source)
 
         if self.owned:
             try:
@@ -370,7 +410,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.3: shared trailer timer on Home and custom hubs 1101-1104")
+        _log("Service 0.4.4: Home monitor trailer fallback and late TV metadata retry")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
