@@ -7,21 +7,38 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.7`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.8`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.3.1); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.3.2); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.7**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.8**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.7/skin.arctic.fuse.3.dev-3.4.2.7.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.8/skin.arctic.fuse.3.dev-3.4.2.8.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.7 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.8 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Kodi log fix: delayed Emby trailer playback in 3.4.2.8
+
+**Issue reproduced from `kodi(4).log` (2026-10-21):** at 13:14:40.651 the Spotlight preview service requested an Emby trailer; at 13:14:40.873 Kodi briefly reported an empty Spotlight list; only afterward, at approximately 13:14:41, did Kodi start actual AV playback. The previous service relinquished the pending launch during the temporary empty-list state. The trailer consequently kept playing through later Spotlight title changes.
+
+The revised **0.3.2** companion service now:
+- Retains trailer ownership across a transient **two-second** Spotlight item-list refresh during Emby video startup.
+- Checks the next-stop deadline independently of whether the current item list is temporarily empty.
+- Stops active trailers **two seconds before the expected slide**; a change to the next title also stops the preceding trailer.
+- After a confirmed stop, resolves and previews the following title only if it has a playable trailer.
+- Watches briefly for a late-starting exact Emby trailer URL if Kodi had not yet reported playback when the stop was requested.
+- Immediately relinquishes playback when actual widgets receive focus; the original Arctic Fuse 3 native background video remains unchanged.
+- Never starts a preview while another player is already active; fullscreen playback is not forcibly stopped.
+
+**Expected 10-second slide test:** film 1 has no trailer (no video). Film 2 has a trailer (start approximately after 1 second, stop by around 8 seconds after its selection). Film 3 should then launch its own trailer if available. Navigate down to the widgets at any point to verify the Spotlight trailer stops.
+
+The Kodi GitHub workflow includes automated mocked tests for delayed Emby startup, a temporarily empty Spotlight container, the two-second cutoff and the third film preview. These are **not substitutes** for testing on Windows Kodi 22.
 
 ## Video playback handoff fix in 3.4.2.7
 
