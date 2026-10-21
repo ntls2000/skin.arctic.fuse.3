@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <includes>
 
+    <variable name="AF3DEV_SpotlightFocusedLabelColor">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">$VAR[ColorSelected]</value>
+        <value>main_fg_100</value>
+    </variable>
+
     <variable name="AF3DEV_SpotlightButtonStyle">
         <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">Premium</value>
         <value>Standard</value>
