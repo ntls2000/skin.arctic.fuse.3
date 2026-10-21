@@ -377,9 +377,9 @@
         <param name="left">0</param>
         <param name="width">auto</param>
         <param name="card_width">410</param>
-        <param name="card_bg">EEFFFFFF</param>
-        <param name="card_icon">FF181818</param>
-        <param name="card_text">FF181818</param>
+        <param name="card_bg">B80A0A0A</param>
+        <param name="card_icon">FFFFFFFF</param>
+        <param name="card_text">FFFFFFFF</param>
         <definition>
             <control type="group" id="$PARAM[groupid]">
                 <!-- LAB ONLY: skin 3.4.2.24 native group/item structure is
@@ -517,9 +517,9 @@
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">260</param>
                             <param name="card_width">410</param>
-                            <param name="card_bg">EEFFFFFF</param>
-                            <param name="card_icon">FF181818</param>
-                            <param name="card_text">FF181818</param>
+                            <param name="card_bg">B80A0A0A</param>
+                            <param name="card_icon">FFFFFFFF</param>
+                            <param name="card_text">FFFFFFFF</param>
                             <onclick>SetFocus(301)</onclick>
                             <onclick condition="!String.StartsWith(Container(301).ListItem.FolderPath,videodb://)">Action(select)</onclick>
                             <onclick condition="String.StartsWith(Container(301).ListItem.FolderPath,videodb://)">Action(play)</onclick>
