@@ -1,79 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <includes>
 
+    <!-- Stable focus colors independent of the saved Premium toggle. -->
     <variable name="AF3DEV_SpotlightFocusedLabelColor">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">$VAR[ColorSelected]</value>
         <value>main_fg_100</value>
     </variable>
 
-    <!-- Rendering-only values; focusable IDs and onclick actions remain
-         identical for Standard and Premium, even when the option is toggled. -->
-    <variable name="AF3DEV_SpotlightPlayGroupWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">440</value>
-        <value>240</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightPlayTextLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
-        <value>140</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightPlayTextColor">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">FF202020</value>
-        <value>main_fg_90</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightInfoIconLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
-        <value>80</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightInfoTextLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
-        <value>160</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightInfoButtonWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
-        <value>auto</value>
-    </variable>
-
-    <!-- Keep the original controls, move only their painting geometry.
-         Standard values reproduce the upstream focus button coordinates. -->
-    <variable name="AF3DEV_SpotlightPlayButtonLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
-        <value>140</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightPlayButtonWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
-        <value>auto</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightPlayButtonMax">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
-        <value>160</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightButtonHeight">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">72</value>
-        <value>80</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightTextOffset">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">78</value>
-        <value>0</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightTextAlignY">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">center</value>
-        <value>top</value>
-    </variable>
-
-    <!-- Both grouplist items occupy one permanent focusable wrapper.
-         The Play wrapper 316 supplies the 20px gap in Premium. -->
-    <variable name="AF3DEV_SpotlightPlayVisualWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
-        <value>240</value>
-    </variable>
-    <variable name="AF3DEV_SpotlightInfoVisualWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
-        <value>340</value>
-    </variable>
-
+    <!-- Premium styling suspended after navigation freeze in 3.4.2.22.
+         Setting remains stored for later, but cannot affect the focus UI. -->
     <variable name="AF3DEV_SpotlightButtonStyle">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">Premium</value>
-        <value>Standard</value>
+        <value>Standard (Premium suspendu)</value>
     </variable>
 
     <variable name="AF3DEV_TabShapeLabel">
