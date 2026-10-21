@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          name='skin.arctic.fuse.3.dev-3.4.2.11.zip'
+          name='skin.arctic.fuse.3.dev-3.4.2.12.zip'
           local_file="kodi-repository/skin.arctic.fuse.3.dev/$name"
           source_url="https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.dev/$name"
           echo "Local file:"
@@ -45,15 +45,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-dev-3.4.2.11'
-          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.11.zip'
+          tag='arctic-fuse-3-dev-3.4.2.12'
+          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.12.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target kodi-repo \
-              --title 'Arctic Fuse 3 DEV 3.4.2.11 (Kodi installer)' \
+              --title 'Arctic Fuse 3 DEV 3.4.2.12 (Kodi installer)' \
               --notes 'Original Arctic Fuse 3 v3.4.2 test build with separate addon ID and Arctic Splash minimum 1.0.0. Install using the downloaded ZIP as a fallback for a failed repository fetch. SHA256 and ZIP structure checked in CI.'
           fi
           gh release upload "$tag" "$asset" --clobber
-          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.11.zip"
+          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.12.zip"
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/release-skin.zip --write-out 'release_http=%{http_code} release_bytes=%{size_download}\n' "$url"
           cmp "$asset" /tmp/release-skin.zip
           unzip -tq /tmp/release-skin.zip
