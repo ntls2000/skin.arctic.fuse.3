@@ -7,21 +7,37 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.8`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.9`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.3.2); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.0); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.8**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.9**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.8/skin.arctic.fuse.3.dev-3.4.2.8.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.9/skin.arctic.fuse.3.dev-3.4.2.9.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.8 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.9 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Kodi 22 native Stop experiment — 3.4.2.9
+
+Following Kodi (6).log, user reported a six-second UI freeze between Spotlight previews. Kodi's `CSaveFileState::DoWork` issued HTTP stat requests against Emby Next Gen's `http://127.0.0.1:57342/dynamic/trailer/...` local proxy, producing repeated 5-second curl timeouts on stopping video.
+
+**User's suggested simpler path:** mimic a standard Stop button and preserve the pre-existing Arctic Fuse 3 widget renderer.
+
+- Service **0.4.0** now uses **`xbmc.executebuiltin("PlayerControl(Stop)", False)`**, the native Kodi Stop action, rather than the synchronous `xbmc.Player().stop()` call.
+- The service does not block waiting for Kodi to stop; it prevents a new trailer until Kodi reports playback has ended (with a short settle period).
+- No HTTP downloads, local cache, background prefetch or second `videowindow`. The original widget video renderer remains unchanged.
+- As before, trailers are stopped when Spotlight changes, when widgets gain focus, or two seconds before the expected autoscroll transition.
+- Tests cover native Stop queueing, stopping once per preview, non-blocking transitions in the service simulation, and original widget handoff.
+
+**Limit:** Both Stop mechanisms ultimately invoke Kodi's player shutdown. Kodi's own HTTP state-save work may still stall the application even if the Python service no longer blocks. This build is an **experiment** to check whether the manually tested Stop-button behaviour avoids visible freezes. If the freeze persists, collect a fresh Kodi log and revert to disabling the Spotlight auto-trailer option; do not repeatedly force the UI through long stalls. This version does not claim that a player can be "virtually" stopped while also making it available for a different video.
+
+**Test** after installing skin **3.4.2.9** and service **0.4.0**: restart Kodi, leave the Spotlight autoscroll at 10 seconds, verify that item 1 can have no trailer, item 2 plays then stops, and item 3 starts only once Kodi finishes stopping the prior trailer. Also confirm that the original widgets play their usual previews.
 
 ## Kodi log fix: delayed Emby trailer playback in 3.4.2.8
 
