@@ -77,7 +77,7 @@ def _normalize_trailer(uri):
     return ""
 
 
-def _tvshow_db_trailer(dbid, dbtype):
+def _tvshow_db_trailer(dbid, dbtype, title=""):
     """Read Emby-synchronized tvshow.c16 directly from Kodi's Video DB.
 
     Emby Next Gen writes trailer URLs into tvshow.c16 for Series. Unlike
@@ -100,9 +100,13 @@ def _tvshow_db_trailer(dbid, dbtype):
         fileuri = "file:" + quote(path.replace("\\", "/"), safe="/:") + "?mode=ro"
         connection = sqlite3.connect(fileuri, uri=True, timeout=0.08)
         try:
-            row = connection.execute("SELECT c16 FROM tvshow WHERE idShow = ? LIMIT 1",
+            row = connection.execute("SELECT c16, c00 FROM tvshow WHERE idShow = ? LIMIT 1",
                                      (int(dbid),)).fetchone()
-            return row[0] if row and row[0] else ""
+            if not row or not row[0]:
+                return ""
+            if dbtype == "" and title and row[1] and row[1].casefold() != title.casefold():
+                return ""
+            return row[0]
         finally:
             connection.close()
     except (OSError, sqlite3.Error, ValueError) as err:
@@ -182,7 +186,7 @@ def _resolve_trailer(info, home):
     candidates = (
         ("emby_spotlight", info["list_trailer"]),
         ("emby_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])),
-        ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"])),
+        ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"], info["title"])),
     )
     for source, raw in candidates:
         candidate = _normalize_trailer(raw)
