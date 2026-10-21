@@ -547,7 +547,7 @@
                             <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
                             <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
                             <param name="aligny">$VAR[AF3DEV_SpotlightTextAlignY]</param>
-                            <param name="premium_width">392</param>
+                            <param name="premium_width">420</param>
                             <param name="premium_background">EEFFFFFF</param>
                             <param name="premium_icon_color">FF202020</param>
                             <param name="premium_text_color">$VAR[AF3DEV_SpotlightPlayTextColor]</param>
