@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.11"
+          DEV_VER = "3.4.2.12"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -68,6 +68,12 @@ jobs:
           assert "LICENSE.txt" in entries
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
+          # This release renames only the visible setting; its Kodi key and
+          # previously saved user choice must remain untouched.
+          setting_source = entries["1080i/Includes_SkinSettings.xml"].decode("utf-8")
+          assert "<label>Activer les trailers dans le Spotlight</label>" in setting_source
+          assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
+          assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
           assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.2" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
@@ -375,10 +381,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): synchronize home slide and preview on same timer 3.4.2.11"
+            git commit -m "ui(kodi): rename Spotlight trailer setting without altering playback 3.4.2.12"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.11.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.12.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.2.zip > /tmp/git-stored-service.zip
