@@ -17,6 +17,8 @@ START_DELAY = 1.1
 STOP_LEAD_SECONDS = 2.0
 MIN_PLAY_SECONDS = 1.5
 START_TIMEOUT = 6.0
+TRANSIENT_LIST_GRACE = 2.0
+LATE_START_GRACE = 3.0
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -129,6 +131,9 @@ class SpotlightService:
         self.owned = False
         self.owned_file = ""
         self.last_state = None
+        self.missing_since = None
+        self.late_stop_until = 0.0
+        self.late_stop_uri = ""
 
     def _property(self, active):
         self.home.setProperty(HOME_PROPERTY, "true" if active else "false")
@@ -140,45 +145,87 @@ class SpotlightService:
         self._property(False)
 
     def _stop_preview(self, reason):
-        """Stop our preview even when the plugin has resolved to an HTTP stream.
+        """Stop only a trailer this service launched, including Emby streams.
 
-        On transition out of Spotlight the native skin widget should take over.
-        Never issue a global PlayerControl(Stop) or stop unrelated user playback.
+        Kodi can report 'not playing' between a play() request and AV start.
+        Keep a short late-start guard rather than orphaning that video.
         """
         if not (self.pending or self.owned):
             self._property(False)
             return
+        was_pending = self.pending
+        video_was_running = False
         try:
-            if self.player.isPlayingVideo():
-                # The Kodi YouTube plug-in can replace the requested plugin://
-                # URI with its resolved stream URL during the same playback.
-                # URI equality is NOT a valid ownership test. Keep ownership
-                # until the player stops, a user opens fullscreen, or the
-                # Spotlight is left.
-                fullscreen = xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")
-                if fullscreen:
-                    _log("Fullscreen playback detected; avoid stopping user media")
+            video_was_running = self.player.isPlayingVideo()
+            if video_was_running:
+                if xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)"):
+                    _log("Fullscreen user playback: release without stopping")
                 else:
                     self.player.stop()
                     _log("Stopped Spotlight trailer: " + reason)
         except RuntimeError as err:
             _log("Player stop failed: " + str(err), xbmc.LOGWARNING)
+        if was_pending and not video_was_running:
+            # Only match an expected media URI; never kill a widget/user video
+            # merely because it started while our late-stop timer was armed.
+            self.late_stop_until = time.monotonic() + LATE_START_GRACE
+            self.late_stop_uri = self.trailer
+            _log("Waiting briefly to cancel a delayed trailer start")
         self._forget_preview()
+
+    def _check_late_start(self, now):
+        if not self.late_stop_until:
+            return
+        if now > self.late_stop_until:
+            self.late_stop_until = 0.0
+            self.late_stop_uri = ""
+            return
+        try:
+            if self.player.isPlayingVideo():
+                current = self.player.getPlayingFile()
+                # Emby trailer URLs are direct local HTTP links; Kodi commonly
+                # retains the requested URL when playback begins.
+                if (current and self.late_stop_uri and
+                        current.split("|")[0] == self.late_stop_uri.split("|")[0] and
+                        not xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")):
+                    self.player.stop()
+                    _log("Stopped late-starting Spotlight trailer")
+                self.late_stop_until = 0.0
+                self.late_stop_uri = ""
+        except RuntimeError:
+            pass
 
     def _tick(self):
         now = time.monotonic()
+        self._check_late_start(now)
+        # The deadline is independent of container visibility: Kodi may
+        # transiently empty/rebuild 301 while opening an Emby video.
+        if (self.pending or self.owned) and self.key is not None:
+            cutoff = min(max(0.0, _interval() - STOP_LEAD_SECONDS), 15.0)
+            if now - self.changed_at >= cutoff:
+                self._stop_preview("before_auto_scroll")
+
         item, state = _spotlight(self.home)
         if state != self.last_state:
             _log("Selection mode: " + state)
             self.last_state = state
 
         if item is None:
+            if state == "no_spotlight_items" and (self.pending or self.owned):
+                if self.missing_since is None:
+                    self.missing_since = now
+                if now - self.missing_since < TRANSIENT_LIST_GRACE:
+                    # Keep pending player ownership until Kodi has completed
+                    # the launch and restored the Spotlight item list.
+                    return
+            self.missing_since = None
             if self.pending or self.owned:
                 self._stop_preview("left_spotlight")
             self.key = None
             self.attempted = False
             return
 
+        self.missing_since = None
         key = (item["path"], item["title"], item["pos"], item["dbid"])
         if key != self.key:
             self._stop_preview("spotlight_item_changed")
@@ -225,7 +272,7 @@ class SpotlightService:
             return
 
         if (self.attempted or not self.trailer or elapsed < START_DELAY or
-                cutoff - elapsed < MIN_PLAY_SECONDS):
+                cutoff - elapsed < MIN_PLAY_SECONDS or self.late_stop_until):
             return
         # Kodi's normal widget/media playback must never be preempted.
         if self.player.isPlaying():
@@ -241,7 +288,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.3.1: native widget video preserved; resolved trailer URL-safe stop")
+        _log("Service 0.3.2: timed trailer stop survives transient Spotlight reloads")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
