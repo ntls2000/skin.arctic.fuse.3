@@ -9,11 +9,11 @@
     <!-- Rendering-only values; focusable IDs and onclick actions remain
          identical for Standard and Premium, even when the option is toggled. -->
     <variable name="AF3DEV_SpotlightPlayGroupWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">272</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">414</value>
         <value>240</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayTextLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-40</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
         <value>20</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayTextColor">
@@ -21,16 +21,43 @@
         <value>main_fg_90</value>
     </variable>
     <variable name="AF3DEV_SpotlightInfoIconLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">20</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
         <value>80</value>
     </variable>
     <variable name="AF3DEV_SpotlightInfoTextLeft">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">45</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-60</value>
         <value>20</value>
     </variable>
     <variable name="AF3DEV_SpotlightInfoButtonWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">240</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">302</value>
         <value>auto</value>
+    </variable>
+
+    <!-- Keep the original controls, move only their painting geometry.
+         Standard values reproduce the upstream focus button coordinates. -->
+    <variable name="AF3DEV_SpotlightPlayButtonLeft">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>
+        <value>140</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightPlayButtonWidth">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">392</value>
+        <value>auto</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightPlayButtonMax">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">392</value>
+        <value>160</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightButtonHeight">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">72</value>
+        <value>80</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightTextOffset">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">78</value>
+        <value>0</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightTextAlignY">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">center</value>
+        <value>top</value>
     </variable>
 
     <variable name="AF3DEV_SpotlightButtonStyle">
