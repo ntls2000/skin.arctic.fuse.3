@@ -7,21 +7,37 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.5`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.7`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.2.0); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.3.1); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.5**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.7**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.5/skin.arctic.fuse.3.dev-3.4.2.5.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.7/skin.arctic.fuse.3.dev-3.4.2.7.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.5 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.7 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Video playback handoff fix in 3.4.2.7
+
+**Important design decision:** Arctic Fuse 3 already renders the Kodi player in its original \`Includes_Background.xml\` / \`Background_Video\` / \`videowindow\`. We now use this **unchanged native renderer**. The extra \`videowindow\` introduced by our 3.4.2.4 preview patch was removed.
+
+The optional Spotlight preview setting now uses service **0.3.1**:
+- Plays only while Spotlight is the active item container (301).
+- When you move to any widget, the original skin's \`TMDbHelper.WidgetContainer\` changes to its widget ID (501, 502, etc). Our service immediately **stops only its own Spotlight trailer** and relinquishes the player to the native widget behaviour.
+- On Spotlight slide change, it stops the previous trailer and can preview the new one.
+- Retains preview ownership when YouTube or another Kodi plugin resolves \`plugin://\` to a different streaming URL during playback. The earlier service could otherwise lose its ownership and leave a video running.
+- Stops the preview two seconds before the normal Spotlight auto-scroll timeout. Never starts a preview if Kodi is already playing another video. It does not change the underlying Emby Next Gen or the original skin's widget playback.
+- Video preview remains **OFF by default** until enabled in Skin Settings.
+
+**To test:** Install DEV skin **3.4.2.7** and confirm companion **0.3.1** under Kodi Add-ons > My add-ons > Services. Restart Kodi. Enable Spotlight preview with a 12s or 15s autoscroll. Let a Spotlight trailer start, then navigate down into widgets. The trailer should stop immediately and normal widget video behaviour should resume. Return to Spotlight and wait for the next slide; the old trailer must stop before new playback.
+
+The GitHub CI tests simulate Spotlight-to-widget focus, resolved streaming URL changes, auto-scroll stop, original background video layer presence, service Python compilation and ZIP integrity. **Interactive playback on Windows Kodi 22 still requires verification.**
 
 ## Trailer launch fix in 3.4.2.5
 
@@ -64,7 +80,7 @@ Safety measures: *off by default*, does not launch when Kodi is already playing 
 
 Direct packages:
 - [Skin DEV 3.4.2.5](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.5/skin.arctic.fuse.3.dev-3.4.2.5.zip)
-- [Companion trailer service 0.1.0](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.2.0.zip)
+- [Companion trailer service 0.1.0](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.3.1.zip)
 
 ## Dependencies
 
