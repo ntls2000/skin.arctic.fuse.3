@@ -90,7 +90,7 @@ jobs:
               "Container(301).CurrentItem": "1",
               "Container(301).ListItem.FileNameAndPath": "videodb://movies/titles/123/",
           }.get(expr, "")
-          xbmc_mock.getCondVisibility = lambda condition: True
+          xbmc_mock.getCondVisibility = lambda condition: not condition.startswith("Window.IsVisible(DialogVideoInfo.xml)")
           xbmc_mock.executeJSONRPC = lambda request: '{"result":{"moviedetails":{"trailer":"plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"}}}'
           gui_mock = types.ModuleType("xbmcgui")
           old_modules = {name: sys.modules.get(name) for name in ("xbmc", "xbmcgui")}
