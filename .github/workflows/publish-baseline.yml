@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.17"
+          DEV_VER = "3.4.2.18"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.7" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.8" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -75,7 +75,7 @@ jobs:
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.7" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.8" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -183,7 +183,11 @@ jobs:
           sys.modules.update({"xbmc":xbmc_mock,"xbmcgui":gui_mock,"xbmcvfs":fs_mock})
           try:
               with tempfile.TemporaryDirectory(prefix="kodi-emby-tv-") as dbdir:
-                  fs_mock.translatePath = lambda uri: dbdir
+                  fs_mock.translatePath = lambda uri: (
+                      os.path.join(dbdir, os.path.basename(uri))
+                      if uri.endswith(".json") else dbdir)
+                  downloaded_themes = set()
+                  fs_mock.exists = lambda uri: uri in downloaded_themes
                   for version, trailer in (
                       (135, "http://127.0.0.1:57342/dynamic/trailer/old.mp4"),
                       (136, "http://127.0.0.1:57342/dynamic/trailer/series.mp4")):
@@ -192,6 +196,28 @@ jobs:
                       conn.execute("INSERT INTO tvshow VALUES (123,'Emby Serie',?)",(trailer,))
                       conn.commit()
                       conn.close()
+                  # Exact Emby Next Gen 12.4.23 schema and ThemeVideo lookup.
+                  # Both Emby DB and server-settings JSON are fixtures only.
+                  server_id = "demotestserver"
+                  theme_id = 190023
+                  theme_metadata = json.dumps({
+                      "Id": theme_id, "Container": "mp4",
+                      "MediaSources": [{"Id":"mediasource_190023"}]})
+                  embydb = os.path.join(dbdir, "emby_" + server_id + ".db")
+                  conn = sqlite3.connect(embydb)
+                  conn.execute("CREATE TABLE Video "
+                               "(EmbyId INTEGER PRIMARY KEY, EmbyExtraType TEXT, "
+                               "EmbyParentType TEXT, KodiParentId INTEGER, "
+                               "EmbyMetaData TEXT)")
+                  conn.execute("INSERT INTO Video VALUES (?,?,?,?,?)",
+                               (theme_id, "ThemeVideo", "Series", 123, theme_metadata))
+                  conn.commit()
+                  conn.close()
+                  settingspath = os.path.join(dbdir, "servers_" + server_id + ".json")
+                  with open(settingspath, "w", encoding="utf-8") as fp:
+                      json.dump({"ServerId":server_id, "ServerUrl":"https://emby-fixture.invalid",
+                                 "AccessToken":"fixture-secret-not-for-logs",
+                                 "DeviceId":"fixture-test-device"}, fp)
                   namespace = {"__name__":"kodi_mock"}
                   exec(compile(service_py,"service.py","exec"),namespace)
                   norm = namespace["_normalize_trailer"]
@@ -204,6 +230,18 @@ jobs:
                   assert namespace["_tvshow_db_trailer"]("123","","Wrong Title") == ""
                   assert namespace["_movie_db_trailer"]("123","tvshow") == ""
                   assert "TMDbHelper.ListItem.Trailer" not in service_py.decode("utf-8")
+                  theme = namespace["_emby_series_theme_video"]("123", "tvshow")
+                  assert "/emby/videos/190023/stream.mp4?" in theme
+                  assert "MediaSourceId=mediasource_190023" in theme
+                  assert "seekable=0" in theme and "plugin.video.youtube" not in theme
+                  assert not namespace["_emby_series_theme_video"]("123","movie")
+                  assert not namespace["_emby_series_theme_video"]("999","tvshow")
+                  local_theme = ("special://profile/addon_data/plugin.service.emby-next-gen/"
+                                 "EMBY-themes/demotestserver_190023.mp4")
+                  downloaded_themes.add(local_theme)
+                  assert namespace["_emby_series_theme_video"]("123","tvshow") == local_theme
+                  downloaded_themes.clear()
+                  print("Emby Series ThemeVideo lookup PASSED: remote stream, local theme, ID guards, read-only DB")
                   service = namespace["SpotlightService"]()
                   service._tick()
                   service.changed_at -= 2.0
@@ -244,13 +282,14 @@ jobs:
                   assert service.active_window_id == 1102
                   assert service.home is windows[10000], "Custom hub must not instantiate a Python GUI Window"
                   assert namespace["_spotlight"](service.home)[1] == "spotlight"
-                  assert service.trailer.endswith("/series.mp4")
+                  assert "/emby/videos/190023/stream.mp4?" in service.trailer
+                  assert "plugin.video.youtube" not in service.trailer
                   state["dialog_busy"] = True
                   assert namespace["_spotlight"](service.home)[1] == "spotlight"
                   state["dialog_busy"] = False
                   service.changed_at -= 2.0
                   service._tick()
-                  assert player.playing and player.plays[-1].endswith("/series.mp4")
+                  assert player.playing and "/emby/videos/190023/stream.mp4?" in player.plays[-1]
                   service._tick()
                   assert service.owned
                   windows[1102].setProperty("TMDbHelper.WidgetContainer","501")
@@ -327,11 +366,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.17"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.18"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.17.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.18.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.7.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
