@@ -102,7 +102,7 @@ jobs:
           assert '<param name="max">$VAR[AF3DEV_SpotlightPlayButtonMax]</param>' in hub_xml
           assert '<left>$VAR[AF3DEV_SpotlightPlayButtonLeft]</left>' in hub_xml
           assert hub_xml.count('<param name="premium_width">420</param>') == 3
-assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
+          assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
           assert '<value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-60</value>' in home_xml, "Info label must align with its background after 60px icon item"
           for field in ('PlayButtonLeft', 'PlayButtonWidth', 'PlayButtonMax',
                         'ButtonHeight', 'TextOffset', 'TextAlignY'):
