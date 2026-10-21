@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <includes>
 
+    <variable name="AF3DEV_TabShapeLabel">
+        <value condition="Skin.HasSetting(HomeSwitcher.PremiumTabs)">Premium - angles droits</value>
+        <value>Original - arrondi</value>
+    </variable>
+
     <variable name="Label_Setting_TopMenuUpAction">
         <value condition="Skin.String(HomeSwitcher.OnUp,options)">$LOCALIZE[33063]</value>
         <value condition="String.IsEmpty(Skin.String(HomeSwitcher.OnUp))">$LOCALIZE[1034]</value>
@@ -710,7 +715,8 @@
                         <focusedcolor>00ffffff</focusedcolor>
                         <label>$INFO[Skin.String(HomeSwitcher.$PARAM[window].Name)]</label>
                         <width>auto</width>
-                        <include>Texture_Highlight_Button_FakeFocus_H</include>
+                        <include condition="!Skin.HasSetting(HomeSwitcher.PremiumTabs)">Texture_Highlight_Button_FakeFocus_H</include>
+                        <include condition="Skin.HasSetting(HomeSwitcher.PremiumTabs)">Texture_Highlight_Button_FakeFocus_H_Premium</include>
                         <visible>![$PARAM[use_icons]]</visible>
                     </control>
                     <control type="label">
