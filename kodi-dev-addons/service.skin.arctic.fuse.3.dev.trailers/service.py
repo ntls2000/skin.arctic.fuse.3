@@ -2,15 +2,9 @@
 # Native Arctic Fuse 3 Background_Video renders the Kodi player for all widgets.
 # This service ONLY creates an opt-in Spotlight preview; it must relinquish the
 # player immediately on widget focus, item change, or leaving the Home window.
-import hashlib
 import json
-import os
-from pathlib import Path
-import tempfile
-import threading
 import time
 from urllib.parse import urlparse, parse_qs
-from urllib.request import Request, urlopen
 
 import xbmc
 import xbmcgui
@@ -25,9 +19,7 @@ MIN_PLAY_SECONDS = 1.5
 START_TIMEOUT = 6.0
 TRANSIENT_LIST_GRACE = 2.0
 LATE_START_GRACE = 3.0
-CACHE_MAX_FILE = 72 * 1024 * 1024
-CACHE_MAX_TOTAL = 180 * 1024 * 1024
-CACHE_DEADLINE = 6.0
+STOP_SETTLE_SECONDS = 0.45
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -126,131 +118,11 @@ def _resolve_trailer(info, home):
     return "", "unavailable"
 
 
-def _is_emby_proxy_trailer(uri):
-    """Only locally proxied Emby trailers are cached; never arbitrary local URLs."""
-    uri = (uri or "").split("|", 1)[0]
-    try:
-        u = urlparse(uri)
-        return (u.scheme == "http" and u.hostname in ("127.0.0.1", "localhost", "::1") and
-                u.path.startswith("/dynamic/trailer/"))
-    except ValueError:
-        return False
-
-
-class TrailerCache:
-    """Finite, background-only Emby download; never blocks Kodi's UI thread.
-
-    Kodi SaveFileState probes HTTP trailer paths when stopping the player; Emby's
-    local proxy can time out three times at 5s. Playing a completed local copy
-    avoids these repeated failing HTTP HEAD/stat probes.
-    """
-    def __init__(self):
-        self.directory = Path(tempfile.mkdtemp(prefix="af3dev-preview-"))
-        self.lock = threading.Lock()
-        self.files = {}
-        self.inflight = set()
-        self.failed = set()
-        self.stop_event = threading.Event()
-        self.threads = []
-
-    def prepare(self, uri):
-        if not _is_emby_proxy_trailer(uri):
-            return
-        key = hashlib.sha256(uri.encode("utf-8")).hexdigest()
-        with self.lock:
-            if key in self.files or key in self.inflight or key in self.failed:
-                return
-            self.inflight.add(key)
-        thread = threading.Thread(target=self._download, args=(uri, key),
-                                  name="AF3DEV-Prefetch", daemon=True)
-        self.threads.append(thread)
-        thread.start()
-
-    def ready(self, uri):
-        if not _is_emby_proxy_trailer(uri):
-            # Other remote HTTP(S) files can trigger similar HTTP stat delays;
-            # skip them rather than risking a Kodi-wide freeze. Existing
-            # plugin:// and local:// sources use Kodi's native player.
-            if uri.startswith(("http://", "https://")):
-                return ""
-            return uri
-        key = hashlib.sha256(uri.encode("utf-8")).hexdigest()
-        with self.lock:
-            path = self.files.get(key)
-        return str(path) if path and path.is_file() else ""
-
-    def _download(self, uri, key):
-        # Preserve the genuine extension for local Kodi decoder selection.
-        original_path = urlparse(uri.split("|", 1)[0]).path.lower()
-        extension = next((x for x in (".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v")
-                          if original_path.endswith(x)), ".mp4")
-        destination = self.directory / (key + extension)
-        partial = self.directory / (key + extension + ".part")
-        ok = False
-        length = 0
-        started = time.monotonic()
-        try:
-            request = Request(uri.split("|", 1)[0],
-                              headers={"User-Agent": "Kodi-AF3DEV-TrailerPreview/0.4"})
-            with urlopen(request, timeout=2.0) as response:
-                declared = response.headers.get("Content-Length", "")
-                if declared.isdecimal() and int(declared) > CACHE_MAX_FILE:
-                    raise ValueError("Trailer exceeds local preview cache size limit")
-                with open(partial, "wb") as out:
-                    while not self.stop_event.is_set():
-                        if time.monotonic() - started >= CACHE_DEADLINE:
-                            raise TimeoutError("Emby trailer prefetch deadline exceeded")
-                        data = response.read(128 * 1024)
-                        if not data:
-                            break
-                        length += len(data)
-                        if length > CACHE_MAX_FILE:
-                            raise ValueError("Trailer exceeds per-file cache limit")
-                        out.write(data)
-            if length > 0 and not self.stop_event.is_set():
-                with self.lock:
-                    total = sum(p.stat().st_size for p in self.files.values()
-                                if p.is_file())
-                    if total + length <= CACHE_MAX_TOTAL:
-                        os.replace(str(partial), str(destination))
-                        self.files[key] = destination
-                        ok = True
-        except Exception as err:
-            _log("Emby preview cache unavailable; keep static artwork (" +
-                 type(err).__name__ + ")", xbmc.LOGWARNING)
-        finally:
-            if not ok:
-                try:
-                    partial.unlink()
-                except OSError:
-                    pass
-            with self.lock:
-                self.inflight.discard(key)
-                if not ok:
-                    self.failed.add(key)
-            if ok:
-                _log("Emby trailer cached locally; original streaming URL not played")
-
-    def close(self):
-        self.stop_event.set()
-        # This is a best-effort cleanup; do not block Kodi shutdown for network.
-        for path in self.directory.glob("*"):
-            try:
-                path.unlink()
-            except OSError:
-                pass
-        try:
-            self.directory.rmdir()
-        except OSError:
-            pass
-
-
 class SpotlightService:
     def __init__(self):
         self.monitor = xbmc.Monitor()
         self.player = xbmc.Player()
         self.home = xbmcgui.Window(HOME_ID)
-        self.cache = TrailerCache()
         self.key = None
         self.changed_at = 0.0
         self.trailer = ""
@@ -263,6 +135,8 @@ class SpotlightService:
         self.missing_since = None
         self.late_stop_until = 0.0
         self.late_stop_uri = ""
+        self.stop_queued = False
+        self.stop_queued_at = 0.0
 
     def _property(self, active):
         self.home.setProperty(HOME_PROPERTY, "true" if active else "false")
@@ -272,6 +146,28 @@ class SpotlightService:
         self.owned = False
         self.owned_file = ""
         self._property(False)
+
+    def _request_stop(self, reason):
+        # Same native Kodi Stop action as a remote/skin button. Unlike the
+        # previous xbmc.Player.stop(), executebuiltin defaults to non-blocking
+        # execution. Avoid waiting for Kodi's Emby URL state-save operations.
+        if self.stop_queued:
+            return
+        self.stop_queued = True
+        self.stop_queued_at = time.monotonic()
+        xbmc.executebuiltin("PlayerControl(Stop)", False)
+        _log("Queued native Kodi Stop: " + reason)
+
+    def _update_stop_state(self, now):
+        if not self.stop_queued:
+            return
+        try:
+            stopped = not self.player.isPlaying()
+        except RuntimeError:
+            stopped = False
+        if stopped and now - self.stop_queued_at >= STOP_SETTLE_SECONDS:
+            self.stop_queued = False
+            _log("Kodi stop completed; safe to resume Spotlight")
 
     def _stop_preview(self, reason):
         """Stop only a trailer this service launched, including Emby streams.
@@ -290,8 +186,7 @@ class SpotlightService:
                 if xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)"):
                     _log("Fullscreen user playback: release without stopping")
                 else:
-                    self.player.stop()
-                    _log("Stopped Spotlight trailer: " + reason)
+                    self._request_stop(reason)
         except RuntimeError as err:
             _log("Player stop failed: " + str(err), xbmc.LOGWARNING)
         if was_pending and not video_was_running:
@@ -317,8 +212,7 @@ class SpotlightService:
                 if (current and self.late_stop_uri and
                         current.split("|")[0] == self.late_stop_uri.split("|")[0] and
                         not xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")):
-                    self.player.stop()
-                    _log("Stopped late-starting Spotlight trailer")
+                    self._request_stop("late_start")
                 self.late_stop_until = 0.0
                 self.late_stop_uri = ""
         except RuntimeError:
@@ -326,6 +220,7 @@ class SpotlightService:
 
     def _tick(self):
         now = time.monotonic()
+        self._update_stop_state(now)
         self._check_late_start(now)
         # The deadline is independent of container visibility: Kodi may
         # transiently empty/rebuild 301 while opening an Emby video.
@@ -362,8 +257,6 @@ class SpotlightService:
             self.changed_at = now
             self.attempted = False
             self.trailer, source = _resolve_trailer(item, self.home)
-            if self.trailer:
-                self.cache.prepare(self.trailer)
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
                                        "no trailer") + "; DBID " +
                  ("present" if item["dbid"] else "absent"))
@@ -403,12 +296,8 @@ class SpotlightService:
             return
 
         if (self.attempted or not self.trailer or elapsed < START_DELAY or
-                cutoff - elapsed < MIN_PLAY_SECONDS or self.late_stop_until):
-            return
-        playable = self.cache.ready(self.trailer)
-        if not playable:
-            # Cache is not ready; the image is kept instead of freezing Kodi.
-            # Recheck every poll until the cutoff, never play the Emby URL direct.
+                cutoff - elapsed < MIN_PLAY_SECONDS or self.late_stop_until or
+                self.stop_queued):
             return
         # Kodi's normal widget/media playback must never be preempted.
         if self.player.isPlaying():
@@ -417,15 +306,14 @@ class SpotlightService:
         self.pending = True
         self.pending_since = now
         try:
-            _log("Opening Spotlight trailer with native background videowindow" +
-                 (" (local cached file)" if playable != self.trailer else ""))
-            self.player.play(playable, windowed=True)
+            _log("Opening Spotlight trailer with native background videowindow")
+            self.player.play(self.trailer, windowed=True)
         except Exception as err:
             self._forget_preview()
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.0: cached Emby trailers avoid Kodi HTTP stat delays")
+        _log("Service 0.4.0: native nonblocking Stop, original widget preview retained")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
@@ -436,7 +324,6 @@ class SpotlightService:
                     self._stop_preview("exception")
         finally:
             self._stop_preview("service_stop")
-            self.cache.close()
             _log("Service stopped")
 
 
