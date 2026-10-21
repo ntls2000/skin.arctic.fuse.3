@@ -243,12 +243,12 @@ class SpotlightService:
             self.last_state = state
 
         if item is None:
-            if state == "no_spotlight_items" and (self.pending or self.owned):
+            if state == "no_spotlight_items" and self.key is not None:
                 if self.missing_since is None:
                     self.missing_since = now
                 if now - self.missing_since < TRANSIENT_LIST_GRACE:
-                    # Keep pending player ownership until Kodi has completed
-                    # the launch and restored the Spotlight item list.
+                    # Preserve slide clock and any pending trailer while Kodi
+                    # briefly refreshes the list; do not reset its countdown.
                     return
             self.missing_since = None
             if self.pending or self.owned:
