@@ -8,7 +8,8 @@ import os
 import re
 import sqlite3
 import time
-from urllib.parse import urlparse, quote
+import uuid
+from urllib.parse import urlparse, quote, urlencode
 
 import xbmc
 import xbmcgui
@@ -115,6 +116,95 @@ def _tvshow_db_trailer(dbid, dbtype, title=""):
         return ""
 
 
+def _emby_series_theme_video(dbid, dbtype):
+    """Find Emby Next Gen's real ThemeVideo for this synchronized Kodi TV show.
+
+    Emby 12.4.23 hooks/themes.py uses Emby SQLite's Video table with
+    EmbyParentType='Series' and KodiParentId=<Kodi tvshow ID>. It prefers a
+    downloaded EMBY-themes file, otherwise streams the original Emby item.
+    Do not invoke Emby's theme player: it controls the user's native widgets.
+    Never log the authenticated URI or the Emby server settings.
+    """
+    if dbtype not in ("tvshow", "series") or not dbid.isdecimal():
+        return ""
+    try:
+        dbdir = xbmcvfs.translatePath("special://profile/Database/")
+        for path in sorted(glob.glob(os.path.join(dbdir, "emby_*.db"))):
+            server_id = os.path.basename(path)[5:-3]
+            if not server_id or not re.fullmatch(r"[a-zA-Z0-9_-]+", server_id):
+                continue
+            dburi = "file:" + quote(path.replace("\\", "/"), safe="/:") + "?mode=ro"
+            try:
+                con = sqlite3.connect(dburi, uri=True, timeout=0.08)
+                try:
+                    row = con.execute(
+                        "SELECT EmbyId, EmbyMetaData FROM Video "
+                        "WHERE EmbyParentType = ? AND KodiParentId = ? "
+                        "AND EmbyExtraType = ? LIMIT 1",
+                        ("Series", int(dbid), "ThemeVideo")).fetchone()
+                finally:
+                    con.close()
+            except sqlite3.Error:
+                continue
+            if not row or not row[1]:
+                continue
+            try:
+                metadata = json.loads(row[1])
+                emby_id = str(row[0])
+                if not emby_id.isdecimal() or str(metadata.get("Id")) != emby_id:
+                    continue
+                container = str(metadata.get("Container", "")).lower()
+                if container not in ("mp4", "mkv", "avi", "mov", "m2ts", "webm"):
+                    continue
+                mediasources = metadata.get("MediaSources") or ()
+                media_id = str(mediasources[0].get("Id", "")).strip()
+                if not media_id:
+                    continue
+                # This is exactly the local ThemeVideo naming used by
+                # Emby Next Gen hooks/themes.py. Kodi resolves special://.
+                local = ("special://profile/addon_data/plugin.service.emby-next-gen/"
+                         "EMBY-themes/" + server_id + "_" + emby_id + "." + container)
+                if xbmcvfs.exists(local):
+                    return local
+
+                # Emby Next Gen stores credentials only in its own server file.
+                # Never create a server connection from guessed host/credentials.
+                settings = xbmcvfs.translatePath(
+                    "special://profile/addon_data/plugin.service.emby-next-gen/"
+                    "servers_" + server_id + ".json")
+                with open(settings, "r", encoding="utf-8") as fp:
+                    server = json.load(fp)
+                if str(server.get("ServerId", "")) != server_id:
+                    continue
+                base = str(server.get("ServerUrl", "")).rstrip("/")
+                parsed = urlparse(base)
+                if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                    continue
+                token = str(server.get("AccessToken", ""))
+                device = str(server.get("DeviceId", ""))
+                if not token or not device:
+                    continue
+                query = urlencode({
+                    "static": "true",
+                    "MediaSourceId": media_id,
+                    "PlaySessionId": uuid.uuid4().hex,
+                    "DeviceId": device,
+                    "api_key": token,
+                })
+                # Match the URI format used by the user's working Emby
+                # ThemeVideo player (including non-seekable Kodi video mode).
+                return (base + "/emby/videos/" + emby_id +
+                        "/stream." + container + "?" + query +
+                        "&stream." + container +
+                        "|seekable=0&failonerror=false&verifypeer=false")
+            except (ValueError, TypeError, KeyError, IndexError, OSError):
+                continue
+    except (OSError, ValueError) as err:
+        _log("Emby Series theme lookup unavailable: " + type(err).__name__,
+             xbmc.LOGWARNING)
+    return ""
+
+
 def _movie_db_trailer(dbid, dbtype):
     if not dbid.isdecimal() or dbtype not in ("", "movie"):
         return ""
@@ -196,13 +286,21 @@ def _spotlight(home):
 
 
 def _resolve_trailer(info, home):
-    # Only sources written by Emby into Kodi's item or video library.
-    # No TMDbHelper, no IMDb API, no YouTube plugin fallback.
-    candidates = (
-        ("emby_spotlight", info["list_trailer"]),
-        ("emby_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])),
-        ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"], info["title"])),
-    )
+    # Series use Emby Next Gen's independent ThemeVideo table. This is NOT
+    # the tvshow.c16 trailer field (often a YouTube plugin URL). Keep the
+    # existing, previously validated film sources completely unchanged.
+    if info["dbtype"] in ("tvshow", "series"):
+        candidates = (
+            ("emby_series_theme", _emby_series_theme_video(info["dbid"], info["dbtype"])),
+            ("emby_spotlight", info["list_trailer"]),
+            ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"], info["title"])),
+        )
+    else:
+        candidates = (
+            ("emby_spotlight", info["list_trailer"]),
+            ("emby_movie_db", _movie_db_trailer(info["dbid"], info["dbtype"])),
+            ("emby_series_db", _tvshow_db_trailer(info["dbid"], info["dbtype"], info["title"])),
+        )
     youtube_only = False
     unsupported_only = False
     for source, raw in candidates:
@@ -475,7 +573,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.7: stable Hub property behind Emby dialogs; no preview replay loop")
+        _log("Service 0.4.8: Emby Series ThemeVideo fallback; stable film preview kept")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
