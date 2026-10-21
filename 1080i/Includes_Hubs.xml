@@ -380,7 +380,7 @@
         <param name="button_height">80</param>
         <param name="text_offset">0</param>
         <param name="aligny">top</param>
-        <param name="premium_width">392</param>
+        <param name="premium_width">420</param>
         <param name="premium_background">EEFFFFFF</param>
         <param name="premium_icon_color">FF202020</param>
         <param name="premium_text_color">main_fg_90</param>
@@ -582,7 +582,7 @@
                         <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
                         <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
                         <param name="aligny">$VAR[AF3DEV_SpotlightTextAlignY]</param>
-                        <param name="premium_width">302</param>
+                        <param name="premium_width">420</param>
                         <param name="premium_background">990A0A0A</param>
                         <param name="premium_icon_color">main_fg_100</param>
                         <onclick>SetFocus(301)</onclick>
