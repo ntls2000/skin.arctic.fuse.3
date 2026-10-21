@@ -114,7 +114,7 @@
             <param name="baseid">$PARAM[baseid]</param>
             <param name="id">013</param>
             <param name="control">radiobutton</param>
-            <label>Spotlight : bandes-annonces auto</label>
+            <label>Activer les trailers dans le Spotlight</label>
             <label2>Arrêt 2 secondes avant le défilement</label2>
             <selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>
             <onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>
