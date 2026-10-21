@@ -386,11 +386,25 @@ jobs:
           root.append(ET.parse(out / "repository.ntls2000.kodi.dev" / "addon.xml").getroot())
           root.append(manifest)
           root.append(companion)
+          # Preserve the separately installable Premium LAB from the repo
+          # catalog whenever a stable DEV release rebuilds addons.xml.
+          # Never overwrite, rebuild, or promote the LAB from this workflow.
+          lab_dir = out / "skin.arctic.fuse.3.premium.lab"
+          lab_manifest_path = lab_dir / "addon.xml"
+          if lab_manifest_path.exists():
+              lab_manifest = ET.parse(lab_manifest_path).getroot()
+              assert lab_manifest.get("id") == "skin.arctic.fuse.3.premium.lab"
+              assert lab_manifest.get("version") == "3.4.2.25"
+              assert (lab_dir / "skin.arctic.fuse.3.premium.lab-3.4.2.25.zip").is_file()
+              root.append(lab_manifest)
+          ids = [node.get("id") for node in root]
+          assert len(ids) == len(set(ids)), "Duplicate Kodi addon ID in catalog"
+          assert {DEV_ID, service_id, "repository.ntls2000.kodi.dev"}.issubset(ids)
           ET.indent(root, space="    ")
           catalog = ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
           (out / "addons.xml").write_bytes(catalog)
           (out / "addons.xml.md5").write_text(hashlib.md5(catalog).hexdigest() + "\n", encoding="ascii")
-          assert len(ET.parse(out / "addons.xml").getroot()) == 3
+          assert len(ET.parse(out / "addons.xml").getroot()) == (4 if lab_manifest_path.exists() else 3)
           print("Published source branch:", SOURCE_REF)
           print("Skin ID:", DEV_ID, "version:", DEV_VER, "files:", len(entries))
           print("Kodi ZIP bytes:", package.stat().st_size)
