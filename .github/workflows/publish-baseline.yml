@@ -92,7 +92,7 @@ jobs:
           assert '<visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>' not in stable.split('<control type="group" id="$PARAM[groupid]">',1)[1].split('<control type="group">',1)[0], "Do not hide the button's parent"
           assert '<nested />' in stable
           assert '<left>$PARAM[textleft]</left>' in stable
-          # 3.4.2.21 visual regression: keep Standard native offsets and
+          # 3.4.2.21 visual regression: equal 420px buttons, Standard offsets and
           # make the art surface and label share a 72px-high Premium row.
           assert stable.index('<left>$PARAM[textleft]</left>') < stable.index('<nested />'), "Nested original 140px left must override default in Standard"
           assert '<height>$PARAM[button_height]</height>' in stable
@@ -101,9 +101,8 @@ jobs:
           assert '<param name="width">$VAR[AF3DEV_SpotlightPlayButtonWidth]</param>' in hub_xml
           assert '<param name="max">$VAR[AF3DEV_SpotlightPlayButtonMax]</param>' in hub_xml
           assert '<left>$VAR[AF3DEV_SpotlightPlayButtonLeft]</left>' in hub_xml
-          assert '<param name="premium_width">392</param>' in hub_xml
-          assert '<param name="premium_width">302</param>' in hub_xml
-          assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
+          assert hub_xml.count('<param name="premium_width">420</param>') == 3
+assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
           assert '<value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-60</value>' in home_xml, "Info label must align with its background after 60px icon item"
           for field in ('PlayButtonLeft', 'PlayButtonWidth', 'PlayButtonMax',
                         'ButtonHeight', 'TextOffset', 'TextAlignY'):
