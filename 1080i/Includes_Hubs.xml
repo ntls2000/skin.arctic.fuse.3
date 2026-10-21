@@ -713,14 +713,8 @@
     <include name="Hub_Window_Background">
         <include>Hub_Window_Refocus_Buttons</include>
         <include>Background</include>
-        <!-- Windowed Spotlight trailer video below interactive widgets and text. -->
-        <control type="videowindow">
-            <left>0</left>
-            <top>0</top>
-            <width>1920</width>
-            <height>1080</height>
-            <visible>Skin.HasSetting(Spotlight.AutoTrailer) + String.IsEqual(Window(Home).Property(AF3DEV.Trailer.Playing),true)</visible>
-        </control>
+        <!-- Use the original Background_Video / videowindow renderer unchanged.
+             The preview service must never create an additional video layer. -->
         <include condition="Skin.HasSetting(HomeSwitcher.Vertical)">Hub_Submenu_Fade</include>
     </include>
     <include name="Hub_Window">
