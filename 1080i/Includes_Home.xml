@@ -44,7 +44,7 @@
         <value>auto</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayButtonMax">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">392</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
         <value>160</value>
     </variable>
     <variable name="AF3DEV_SpotlightButtonHeight">
