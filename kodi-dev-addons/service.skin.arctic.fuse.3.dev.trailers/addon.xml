@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="service.skin.arctic.fuse.3.dev.trailers" name="AF3 DEV - Spotlight Trailers" version="0.4.7" provider-name="ntls2000">
+<addon id="service.skin.arctic.fuse.3.dev.trailers" name="AF3 DEV - Spotlight Trailers" version="0.4.8" provider-name="ntls2000">
     <requires><import addon="xbmc.python" version="3.0.1" /></requires>
     <extension point="xbmc.service" library="service.py" start="startup" />
     <extension point="xbmc.addon.metadata">
         <summary lang="en_GB">Spotlight trailer preview for Arctic Fuse 3 DEV</summary>
-        <description lang="en_GB">Spotlight video previews from Emby-synchronized Kodi metadata only. No YouTube dependency or external trailer lookup. Corrected custom Hub window property access, Emby-only playback and native nonblocking Stop; disabled by default.</description>
+        <description lang="en_GB">Spotlight Films keeps its proven local Emby trailer path. TV Series resolve Emby Next Gen indexed ThemeVideo, using local downloaded themes or authenticated Emby streams. No YouTube dependency, read-only metadata, native nonblocking Stop; disabled by default.</description>
         <summary lang="fr_FR">Bandes-annonces du Spotlight pour Arctic Fuse 3 DEV</summary>
-        <description lang="fr_FR">Trailers Emby via la bibliotheque Kodi, sans YouTube ni TMDb. Stop natif, lecture differee au demarrage et widgets preserves.</description>
+        <description lang="fr_FR">Films inchanges; Series : ThemeVideo Emby locale ou sur serveur, via index Kodi/Emby en lecture seule. Sans YouTube. Stop natif et widgets preserves.</description>
         <platform>all</platform>
         <license>MIT</license>
     </extension>
