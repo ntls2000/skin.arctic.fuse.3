@@ -7,21 +7,48 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.9`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.10`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.0); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.1); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.9**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.10**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.9/skin.arctic.fuse.3.dev-3.4.2.9.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.10/skin.arctic.fuse.3.dev-3.4.2.10.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.9 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.10 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Spotlight duration fix in 3.4.2.10
+
+**Problem:** The Spotlight trailer service capped the early-stop threshold at **15 seconds**, regardless of the selected slide interval. Thus a 20-second setting stopped after 15 seconds, a 30-second setting after 15 seconds instead of 28, a 60-second setting after 15 instead of 58, and a ten-minute setting after 15 seconds.
+
+**Fix:** Service **0.4.1** reads Kodi's actual `Skin.String(AutoScrollTime)` on each poll and uses the exact same values as `1080i/Includes_Defaults.xml` `Defs_AutoScroll`. The stop deadline is **configured interval minus 2 seconds**, measured from the current Spotlight item change:
+
+| AutoScrollTime | Stop at |
+|---|---|
+| 5s | 3s |
+| 8s | 6s |
+| 10s | 8s |
+| 12s (or unset, Kodi skin default) | 10s |
+| 15s | 13s |
+| 20s | 18s |
+| 30s | 28s |
+| 60s | 58s |
+| 10m | 9m 58s |
+
+- The configured setting is reread, so changing the skin interval does not require restarting the service.
+- Logs on each new Spotlight item show `autoscroll=<N>s; stop_at=<N-2>s` for easy verification, without exposing trailer URLs.
+- Existing native nonblocking `PlayerControl(Stop)`, trailer startup handling, and original widget video system are retained. No local trailer cache.
+- CI tests all nine intervals and specifically asserts that a 30-second setting does **not** stop at 16 seconds but **does** stop at 28 seconds.
+
+**Note:** Kodi may pause or defer autoscroll because of focus or dialogs; the service currently uses the chosen time from the item's selection, not a private Kodi GUI timer. On those unusual paused cases, the calculated stop can precede the actual slide. The next iteration can synchronize with the UI's pause state if reported.
+
+**Test:** Update **Arctic Fuse 3 DEV 3.4.2.10** and its companion **0.4.1**, restart Kodi, set Autoscroll to **30s**, and confirm the trailer stops around **28 seconds after that Spotlight title appears**. Then try a different interval and inspect `[AF3DEV.Trailer]` lines if necessary.
 
 ## Kodi 22 native Stop experiment — 3.4.2.9
 
