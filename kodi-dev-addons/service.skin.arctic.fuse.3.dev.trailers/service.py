@@ -160,7 +160,18 @@ def _spotlight(home):
     # Kodi may refuse xbmcgui.Window(1102) even though the Series hub is live:
     # Custom_1102_Hub.xml is activated as GUI window 11102. Query the label
     # used by the original skin instead of opening the custom window in Python.
-    active = xbmc.getInfoLabel("Window.Property(TMDbHelper.WidgetContainer)").strip()
+    # Window.Property() without an explicit ID may suddenly return an empty
+    # value when Emby opens DialogBusy during a background trailer start.
+    # Address the actual underlying Kodi window, not the frontmost dialog.
+    # Skin custom hub IDs 1101-1104 map to real Kodi IDs 11101-11104.
+    window_id = _active_window_id()
+    persistent_label = ("Window(Home).Property(TMDbHelper.WidgetContainer)"
+                        if window_id == HOME_ID else
+                        "Window(" + str(10000 + window_id) +
+                        ").Property(TMDbHelper.WidgetContainer)")
+    active = xbmc.getInfoLabel(persistent_label).strip()
+    if not active:
+        active = xbmc.getInfoLabel("Window.Property(TMDbHelper.WidgetContainer)").strip()
     if active != "301":
         return None, "native_widget" if active else "not_spotlight"
     # Extra protection in the short interval before onfocus changes the property.
@@ -347,12 +358,13 @@ class SpotlightService:
             self.last_state = state
 
         if item is None:
-            if state == "no_spotlight_items" and self.key is not None:
+            if state in ("no_spotlight_items", "not_spotlight") and self.key is not None:
                 if self.missing_since is None:
                     self.missing_since = now
                 if now - self.missing_since < TRANSIENT_LIST_GRACE:
-                    # Preserve slide clock and any pending trailer while Kodi
-                    # briefly refreshes the list; do not reset its countdown.
+                    # Preserve slide clock/pending video while Kodi briefly
+                    # obscures the Spotlight behind Emby's DialogBusy. This
+                    # must NOT schedule an early Stop and replay loop.
                     return
             self.missing_since = None
             if self.pending or self.owned:
@@ -463,7 +475,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.6: custom Hub focus via Window.Property, Emby-only TV diagnostics")
+        _log("Service 0.4.7: stable Hub property behind Emby dialogs; no preview replay loop")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
