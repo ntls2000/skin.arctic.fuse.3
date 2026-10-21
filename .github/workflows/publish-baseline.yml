@@ -33,7 +33,7 @@ jobs:
           ORIGINAL_COMMIT = "1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.1"
+          DEV_VER = "3.4.2.2"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,12 +55,14 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
+                      txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
               entries[name] = payload
 
           manifest = ET.fromstring(entries["addon.xml"])
           assert manifest.get("id") == DEV_ID
           assert manifest.get("version") == DEV_VER
+          assert any(x.get("addon") == "resource.images.arctic.splash" and x.get("version") == "1.0.0" for x in manifest.findall("./requires/import")), "Arctic Splash version check failed"
           assert "LICENSE.txt" in entries
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
