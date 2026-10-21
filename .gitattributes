@@ -12,3 +12,7 @@ addon.xml merge=ours
 *.wav binary
 *.mp3 binary
 *.xbt binary
+
+# Kodi ZIP add-on archives must never undergo text line-ending normalization.
+# Without this rule Git corrupts the compressed bytes and Kodi reports broken ZIP.
+*.zip binary
