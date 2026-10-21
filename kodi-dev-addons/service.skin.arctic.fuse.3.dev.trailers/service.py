@@ -104,6 +104,7 @@ def _spotlight(home):
         "title": label("Title"),
         "path": label("FileNameAndPath"),
         "pos": xbmc.getInfoLabel("Container(301).CurrentItem").strip(),
+        "count": int(count),
         "dbid": label("DBID"),
         "dbtype": label("DBType").lower(),
         "list_trailer": label("Trailer") or label("Property(Trailer)"),
@@ -131,6 +132,7 @@ class SpotlightService:
         self.home = xbmcgui.Window(HOME_ID)
         self.key = None
         self.changed_at = 0.0
+        self.slide_advance_requested = False
         self.trailer = ""
         self.attempted = False
         self.pending = False
@@ -253,6 +255,7 @@ class SpotlightService:
                 self._stop_preview("left_spotlight")
             self.key = None
             self.attempted = False
+            self.slide_advance_requested = False
             return
 
         self.missing_since = None
@@ -261,6 +264,7 @@ class SpotlightService:
             self._stop_preview("spotlight_item_changed")
             self.key = key
             self.changed_at = now
+            self.slide_advance_requested = False
             self.attempted = False
             self.trailer, source = _resolve_trailer(item, self.home)
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
@@ -298,9 +302,26 @@ class SpotlightService:
 
         elapsed = now - self.changed_at
         cutoff = _preview_cutoff()
+        if elapsed >= cutoff and (self.pending or self.owned):
+            self._stop_preview("before_auto_scroll")
+
+        # When previews are enabled on Home, native autoscroll is gated off.
+        # A single monotonic clock controls both Stop (interval-2) and the
+        # actual next slide (interval). The original Kodi autoscroll is used
+        # unchanged when the setting is turned off.
+        if elapsed >= _interval():
+            if not self.slide_advance_requested and item["count"] > 1:
+                self.slide_advance_requested = True
+                try:
+                    # Official GUI built-in: sends GUI_MSG_MOVE_OFFSET to
+                    # the (unfocused, offscreen) Spotlight wraplist 301.
+                    xbmc.executebuiltin("Control.Move(301,1)", False)
+                    _log("Advancing Spotlight after " + str(_interval()) + "s")
+                except Exception as err:
+                    _log("Spotlight advance failed: " + type(err).__name__, xbmc.LOGWARNING)
+            return
+
         if elapsed >= cutoff:
-            if self.pending or self.owned:
-                self._stop_preview("before_auto_scroll")
             return
 
         if (self.attempted or not self.trailer or elapsed < START_DELAY or
@@ -321,7 +342,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.1: exact AutoScrollTime minus two seconds; native nonblocking Stop")
+        _log("Service 0.4.2: one clock controls Spotlight Stop and next slide; original widget preview retained")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
