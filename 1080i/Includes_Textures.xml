@@ -54,6 +54,11 @@
         <texturefocus colordiffuse="$VAR[ColorHighlight]" border="20">common/box.png</texturefocus>
         <texturenofocus colordiffuse="$VAR[ColorHighlight]" border="20">common/box.png</texturenofocus>
     </include>
+    <!-- Rectangular, understated Spotlight action focus; Standard uses underline. -->
+    <include name="Texture_Highlight_Spotlight_Premium">
+        <texturefocus border="18" colordiffuse="$VAR[ColorHighlight]">common/box.png</texturefocus>
+        <texturenofocus border="18" colordiffuse="33FFFFFF">common/box.png</texturenofocus>
+    </include>
     <include name="Texture_Highlight_ToggleButton_FakeFocus_H">
         <texturenofocus />
         <texturefocus colordiffuse="$VAR[ColorHighlight]" border="40">common/menu.png</texturefocus>
