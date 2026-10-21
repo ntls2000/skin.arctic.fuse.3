@@ -394,8 +394,10 @@ jobs:
           if lab_manifest_path.exists():
               lab_manifest = ET.parse(lab_manifest_path).getroot()
               assert lab_manifest.get("id") == "skin.arctic.fuse.3.premium.lab"
-              assert lab_manifest.get("version") == "3.4.2.25"
-              assert (lab_dir / "skin.arctic.fuse.3.premium.lab-3.4.2.25.zip").is_file()
+              lab_version = lab_manifest.get("version")
+              assert lab_version and lab_version.startswith("3.4.2."), "Unexpected Premium LAB version"
+              lab_archive = lab_dir / ("skin.arctic.fuse.3.premium.lab-" + lab_version + ".zip")
+              assert lab_archive.is_file(), "Published LAB archive missing"
               root.append(lab_manifest)
           ids = [node.get("id") for node in root]
           assert len(ids) == len(set(ids)), "Duplicate Kodi addon ID in catalog"
