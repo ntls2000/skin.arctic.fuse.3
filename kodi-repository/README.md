@@ -7,21 +7,37 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.22`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.23`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.22**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.23**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.22/skin.arctic.fuse.3.dev-3.4.2.22.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.23/skin.arctic.fuse.3.dev-3.4.2.23.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.22 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.23 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+
+## Emergency safe navigation rollback — 3.4.2.23 (Kodi 22 validation pending)
+
+The user tested 3.4.2.22 on Kodi 22 and reported that Spotlight Premium STILL split the Information and Resume action labels while **navigation was blocked**. Versions 3.4.2.19–3.4.2.22 must not be treated as valid Premium skins.
+
+**3.4.2.23 is intentionally a recovery build, NOT a new Premium design.** It restores the complete `1080i/Includes_Hubs.xml` and `1080i/Includes_Home.xml` layout from the user's functional 3.4.2.18 source baseline, with only these safety changes:
+
+- The original Spotlight button artwork, underline, focusable IDs `311`/`312`, play parent `316`, focus routes, click actions, and widget flow are restored.
+- `Skin.HasSetting(Spotlight.PremiumButtons)` no longer controls ANY part of `Includes_Hubs.xml`, so even existing installations with Premium saved as enabled render the original Standard controls.
+- The settings label reads **Standard (Premium suspendu)** to make this deliberate fallback clear; the saved choice is not deleted.
+- No Emby / service / video / ThemeVideo / Stop / widget / custom Hub source logic is changed. Companion service stays **0.4.8**.
+
+To recover a frozen Kodi interface, **exit Kodi completely**, back up the installed `skin.arctic.fuse.3.dev` folder, and extract `skin.arctic.fuse.3.dev-3.4.2.23.zip` so the archive's own top-level `skin.arctic.fuse.3.dev` folder replaces the installed skin folder in the Kodi `addons` directory. On Windows the default is `%APPDATA%\\Kodi\\addons\\`; on Linux it is `~/.kodi/addons/`. Never extract the ZIP inside the skin folder, and never delete `userdata`.
+
+CI validates the recovered XML and the Emby 0.4.8 regression suite. **Actual navigation recovery needs user testing in Kodi 22. Premium design work must stay suspended until normal focus behavior is confirmed.**
 
 ## Corrective layout — 3.4.2.22 (Kodi 22 user test pending)
 
