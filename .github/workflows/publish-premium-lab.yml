@@ -149,4 +149,95 @@ jobs:
             "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip"
           cmp "$zip" /tmp/lab-public-check.zip
           unzip -tq /tmp/lab-public-check.zip
-          echo 'PREMIUM LAB release verified byte-for-byte after public download'
+          echo 'PREMIUM LAB release verified byte-for-byte after public download' 
+      - name: Publish LAB archive into NTLS2000 Kodi repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib
+          import shutil
+          import xml.etree.ElementTree as ET
+
+          root_dir = Path('kodi-repository')
+          lab_id = 'skin.arctic.fuse.3.premium.lab'
+          lab_version = '3.4.2.25'
+          lab_file = f'{lab_id}-{lab_version}.zip'
+          src_zip = Path('/tmp') / lab_file
+          lab_dir = root_dir / lab_id
+          catalog_path = root_dir / 'addons.xml'
+          stable_id = 'skin.arctic.fuse.3.dev'
+          svc_id = 'service.skin.arctic.fuse.3.dev.trailers'
+          repo_id = 'repository.ntls2000.kodi.dev'
+
+          # The exact stable version/bytes are guardrails, never update them.
+          stable_zip = root_dir / stable_id / f'{stable_id}-3.4.2.24.zip'
+          assert stable_zip.exists(), 'Validated DEV 3.4.2.24 archive missing'
+          stable_before = hashlib.sha256(stable_zip.read_bytes()).hexdigest()
+          assert stable_before == '7b55ef5c0e515fbfc86c6c61f1e2b9a604a99c7309a89bd8161e4a1916abaddd', 'Stable DEV ZIP was altered'
+          stable_manifest = ET.parse(root_dir / stable_id / 'addon.xml').getroot()
+          assert stable_manifest.get('id') == stable_id
+          assert stable_manifest.get('version') == '3.4.2.24'
+          service_xml = ET.parse(root_dir / svc_id / 'addon.xml').getroot()
+          assert service_xml.get('version') == '0.4.8'
+
+          with ZipFile(src_zip) as archive:
+              assert archive.testzip() is None
+              manifest_bytes = archive.read(f'{lab_id}/addon.xml')
+              icon_bytes = archive.read(f'{lab_id}/icon.png')
+              fanart_bytes = archive.read(f'{lab_id}/fanart.jpg')
+          lab_manifest = ET.fromstring(manifest_bytes)
+          assert lab_manifest.get('id') == lab_id
+          assert lab_manifest.get('version') == lab_version
+          assert lab_manifest.get('name') == 'Arctic Fuse 3 Premium LAB'
+          assert any(x.get('addon') == svc_id and x.get('version') == '0.4.8'
+                     for x in lab_manifest.findall('./requires/import'))
+          assert hashlib.sha256(src_zip.read_bytes()).hexdigest() == (
+              '88f144b5258b43508b9f731d75921b75ecdc76a7f6459616662e85da4042a11d'), 'Standalone tested LAB ZIP changed unexpectedly'
+
+          lab_dir.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(src_zip, lab_dir / lab_file)
+          (lab_dir / 'addon.xml').write_bytes(manifest_bytes)
+          (lab_dir / 'icon.png').write_bytes(icon_bytes)
+          (lab_dir / 'fanart.jpg').write_bytes(fanart_bytes)
+
+          catalog_root = ET.parse(catalog_path).getroot()
+          assert catalog_root.tag == 'addons'
+          existing_ids = [child.get('id') for child in catalog_root]
+          assert set(existing_ids) == {repo_id, stable_id, svc_id}, (
+              'Unexpected catalog before adding isolated LAB', existing_ids)
+          catalog_root.append(lab_manifest)
+          ids = [child.get('id') for child in catalog_root]
+          assert len(ids) == len(set(ids)) == 4, 'Repository must list 4 unique add-ons'
+          assert catalog_root.find(f"./addon[@id='{stable_id}']").get('version') == '3.4.2.24'
+          assert catalog_root.find(f"./addon[@id='{svc_id}']").get('version') == '0.4.8'
+          ET.indent(catalog_root, space='    ')
+          catalog = ET.tostring(catalog_root, encoding='utf-8',
+                                xml_declaration=True) + b'\n'
+          catalog_path.write_bytes(catalog)
+          (root_dir / 'addons.xml.md5').write_text(
+              hashlib.md5(catalog).hexdigest() + '\n', encoding='ascii')
+          assert hashlib.sha256(stable_zip.read_bytes()).hexdigest() == stable_before
+          assert len(ET.parse(catalog_path).getroot()) == 4
+          print('PREMIUM LAB REPO CATALOG READY: 4 distinct add-on IDs; DEV 3.4.2.24 untouched')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f kodi-repository/skin.arctic.fuse.3.premium.lab/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
+          git diff --cached --quiet && { echo "Lab catalog was not changed"; exit 1; }
+          git commit -m 'repo(kodi): add isolated Premium LAB 3.4.2.25 beside stable DEV 3.4.2.24'
+          git push origin HEAD:kodi-repo
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip > /tmp/git-stored-lab.zip
+          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip
+          unzip -tq /tmp/git-stored-lab.zip
+          curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 \
+            --output /tmp/lab-repository-download.zip \
+            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip
+          cmp /tmp/git-stored-lab.zip /tmp/lab-repository-download.zip
+          unzip -tq /tmp/lab-repository-download.zip
+          git show HEAD:kodi-repository/addons.xml | grep 'skin.arctic.fuse.3.premium.lab'
+          git show HEAD:kodi-repository/addons.xml | grep 'skin.arctic.fuse.3.dev'
+          echo 'KODI REPO PREMIUM LAB: public archive matches release and is cataloged alongside stable DEV'
+
