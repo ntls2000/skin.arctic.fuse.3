@@ -541,7 +541,7 @@
                         <width>240</width>
                         <orientation>horizontal</orientation>
 
-                        <include content="Hub_Spotlight_Button_Circle">
+                        <include content="Hub_Spotlight_Button_Circle" condition="!Skin.HasSetting(Spotlight.PremiumButtons)">
                             <param name="id">311</param>
                             <param name="groupid">321</param>
                             <param name="label">$VAR[Label_FullscreenWidget_PlayButton]</param>
