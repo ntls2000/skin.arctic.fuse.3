@@ -7,21 +7,40 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.13`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.14`** |
 
-Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.3); preview itself remains disabled by default.
+Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.4); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.13**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.14**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.13/skin.arctic.fuse.3.dev-3.4.2.13.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.14/skin.arctic.fuse.3.dev-3.4.2.14.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.13 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.14 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Fixed in 3.4.2.14 — TV-show Spotlight trailers and Premium button grouping
+
+**Observed:** The user confirmed trailer previews play in Home and the Films hub, but not their TV Series hub. The earlier implementation used `VideoLibrary.GetMovieDetails` to find movie trailers, then tried `TMDbHelper.ListItem.Trailer` on the **currently active hub window**. TMDbHelper's classic service monitor actually publishes the detailed item under **Window(Home)** even for customized hubs. In addition, TV shows do not have an equivalent supported `VideoLibrary.GetTVShowDetails(...properties=["trailer"])` lookup to rely on.
+
+**Companion service 0.4.4:**
+- Always prefers the trailer provided directly by the selected Spotlight list item, including for TV.
+- For movies, keeps the existing Kodi movie database lookup.
+- For TV shows, consults the TMDbHelper global **Window(Home)** monitor's `TMDbHelper.ListItem.Trailer` and `TMDbHelper.ListItem.base_trailer`.
+- Verifies the monitor's TMDb identifier (when available on both sides) or matching title to avoid playing a stale trailer from a previously selected series.
+- Retries unavailable TV metadata after 1.5 seconds while that slide is active, because TMDbHelper updates asynchronously.
+- Retains the original nonblocking native Stop, 2-second early cutoff, unified autoscroll timing, custom hubs and native widget playback.
+- Does **not** invent or search for videos for shows that have no trailer in the available metadata.
+
+**Premium UI:** The previous build had a separate grey rectangle behind the Play/Info icon and another behind the text, causing broken alignment. The new Premium mode hides the original icon panel and keeps one unified rectangular action button. **Standard** is still available as the original design.
+
+**Kodi test:** Update skin **3.4.2.14** with companion **0.4.4**; restart Kodi, select the Series hub and let a TV show with a known trailer appear. If no video plays, check `kodi.log` for `[AF3DEV.Trailer]` and specifically `no trailer (monitor_not_ready)`, `no trailer (monitor_without_trailer)`, or `Series Spotlight trailer ready via tmdb_monitor_home`. These log messages expose no trailer URL. A title without a trailer must continue to show its artwork and advance on schedule.
+
+The CI tests cover global monitor fallback, an asynchronously arriving trailer, stale-title and TMDb-ID protection, the prior movie and hub transitions, UI XML integrity and published ZIP checks. Interactive Kodi testing is still needed.
 
 ## New in 3.4.2.13 — custom Hub trailers and Spotlight button styles
 
