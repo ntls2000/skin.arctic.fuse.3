@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.9"
+          DEV_VER = "3.4.2.10"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.0" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.1" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -69,7 +69,7 @@ jobs:
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.0" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.1" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -257,9 +257,43 @@ jobs:
               service._tick()
               assert not service.stop_queued, "Unlock after Kodi stops"
 
+              # Every autoscroll duration maps 1:1 to native Defs_AutoScroll.
+              for label, interval in (("5s", 5), ("8s", 8), ("10s", 10),
+                                      ("12s", 12), ("15s", 15), ("20s", 20),
+                                      ("30s", 30), ("60s", 60), ("10m", 600)):
+                  state["autoscroll"] = label
+                  assert namespace["_interval"]() == interval, label
+                  assert namespace["_preview_cutoff"]() == interval - 2, label
+              state["autoscroll"] = ""
+              assert namespace["_interval"]() == 12, "Empty setting must use 12s skin default"
+
+              # Regression: old 15-second cap stopped 30s slides too early.
+              state["autoscroll"] = "30s"
+              state["position"] = "7"
+              state["title"] = "Long slide"
+              service._tick()
+              service.changed_at -= 2.0
+              service._tick()
+              service._tick()
+              assert player.playing and service.owned, "30s preview didn't start"
+              stop_count = player.stopped
+              service.changed_at -= 14.0
+              service._tick()
+              assert player.playing and player.stopped == stop_count, "Stopped 30s trailer at only 16 seconds"
+              service.changed_at -= 12.1
+              service._tick()
+              assert player.stopped == stop_count + 1 and not player.playing, "30s slide must stop at 28s"
+
+              # Changing the skin setting must be reflected without restart.
+              state["autoscroll"] = "60s"
+              assert namespace["_preview_cutoff"]() == 58
+              state["autoscroll"] = "10s"
+              assert namespace["_preview_cutoff"]() == 8
+              print("AutoScrollTime tests PASSED: all nine intervals and real 30-second stop")
+
               assert b"AF3DEV.Trailer.Playing" not in entries["1080i/Includes_Hubs.xml"]
               assert b'<include name="Background_Video">' in entries["1080i/Includes_Background.xml"]
-              print("Kodi mocks PASSED: native async Stop, native widgets, late-start, single-stop, no cache")
+              print("Kodi mocks PASSED: native async Stop, widgets, delayed startup, no cache, full autoscroll intervals")
           finally:
               for name, previous in old_modules.items():
                   if previous is None:
@@ -317,11 +351,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): native nonblocking Stop instead of local video cache, 3.4.2.9"
+            git commit -m "fix(kodi): full AutoScrollTime duration minus 2s, no 15s cap, 3.4.2.10"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.9.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.10.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.0.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.1.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
