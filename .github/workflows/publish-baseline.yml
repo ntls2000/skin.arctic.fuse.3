@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.6"
+          DEV_VER = "3.4.2.7"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.3.0" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.3.1" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -69,7 +69,7 @@ jobs:
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.3.0" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.3.1" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -159,6 +159,11 @@ jobs:
               assert player.playing, "Trailer was not launched for Spotlight"
               service._tick()
               assert service.owned, "Trailer ownership wasn't confirmed"
+              # YouTube often replaces plugin:// URI with a resolved HTTP stream.
+              # Its preview must still stop when moving to native widgets.
+              player.url = "https://stream.example.net/resolved-video"
+              service._tick()
+              assert service.owned, "Resolver URL change wrongly released ownership"
               home.setProperty("TMDbHelper.WidgetContainer", "501")
               service._tick()
               assert player.stopped == 1 and not player.playing, "Widget focus did not stop trailer"
@@ -234,11 +239,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): restore native widget player handoff, fix trailer stop 3.4.2.6"
+            git commit -m "fix(kodi): preserve trailer ownership across stream resolving 3.4.2.7"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.6.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.7.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.3.0.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.3.1.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
