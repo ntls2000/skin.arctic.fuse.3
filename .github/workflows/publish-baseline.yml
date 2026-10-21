@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.8"
+          DEV_VER = "3.4.2.9"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.3.2" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.0" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -69,7 +69,7 @@ jobs:
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.3.2" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.0" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -140,6 +140,14 @@ jobs:
           class MockMonitor:
               pass
           player = MockPlayer()
+          native_stop_calls = []
+          def native_stop(command, wait=False):
+              assert command == "PlayerControl(Stop)"
+              assert wait is False
+              native_stop_calls.append(command)
+              if not getattr(player, "stop_deferred", False):
+                  player.stop()
+          xbmc_mock.executebuiltin = native_stop
           home = MockWindow()
           gui_mock = types.ModuleType("xbmcgui")
           xbmc_mock.Player = lambda: player
@@ -174,6 +182,7 @@ jobs:
               assert player.stopped == 1 and not player.playing, "Widget focus did not stop trailer"
               assert not service.owned and not service.pending
               assert namespace["_spotlight"](home)[1] == "native_widget"
+              service.stop_queued_at -= 1.0
               # Re-entry to Spotlight and next item automatic cutoff.
               home.setProperty("TMDbHelper.WidgetContainer", "301")
               service._tick()
@@ -184,6 +193,7 @@ jobs:
               service.changed_at -= 9.0
               service._tick()
               assert player.stopped == 2 and not player.playing, "Autoscroll cutoff missed"
+              service.stop_queued_at -= 1.0
               # Emby HTTP streams may begin after Kodi rebuilds the Spotlight
               # list: old service lost ownership and played forever.
               state["position"] = "2"
@@ -205,6 +215,7 @@ jobs:
               service.changed_at -= 7.0
               service._tick()
               assert player.stopped == 3 and not player.playing, "Delayed trailer missed 2-second stop"
+              service.stop_queued_at -= 1.0
               state["position"] = "3"
               state["title"] = "Third film"
               service._tick()
@@ -215,16 +226,40 @@ jobs:
               service.changed_at -= 7.0
               service._tick()
               assert player.stopped == 4 and not player.playing, "Third trailer was not stopped"
+              service.stop_queued_at -= 1.0
               # Next title with no trailer must never play the previous one.
               state["position"] = "4"
               state["title"] = "No trailer movie"
               state["num_items"] = "2"
               service._tick()
               assert not player.playing
+              assert len(native_stop_calls) == 4, "Exactly one native Stop per trailer"
+              assert not hasattr(service, "cache"), "Old cache implementation must be removed"
+
+              # A queued Kodi Stop may not execute until a later GUI cycle.
+              state["position"] = "5"
+              state["title"] = "Another trailer"
+              service._tick()
+              service.changed_at -= 2
+              service._tick()
+              service._tick()
+              assert player.playing
+              player.stop_deferred = True
+              service.changed_at -= 7
+              service._tick()
+              assert service.stop_queued and player.playing, "Stop must be queued, not blocking"
+              state["position"] = "6"
+              service._tick()
+              assert service.stop_queued, "Do not launch while Stop is queued"
+              player.stop_deferred = False
+              player.stop()
+              service.stop_queued_at -= 1.0
+              service._tick()
+              assert not service.stop_queued, "Unlock after Kodi stops"
 
               assert b"AF3DEV.Trailer.Playing" not in entries["1080i/Includes_Hubs.xml"]
               assert b'<include name="Background_Video">' in entries["1080i/Includes_Background.xml"]
-              print("Kodi mocks PASSED: widget handoff, delayed Emby startup, 2s cutoff, third title playback, native layer")
+              print("Kodi mocks PASSED: native async Stop, native widgets, late-start, single-stop, no cache")
           finally:
               for name, previous in old_modules.items():
                   if previous is None:
@@ -282,11 +317,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): prevent lost Emby trailers on transient Spotlight reload 3.4.2.8"
+            git commit -m "fix(kodi): native nonblocking Stop instead of local video cache, 3.4.2.9"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.8.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.9.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.3.2.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.0.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
