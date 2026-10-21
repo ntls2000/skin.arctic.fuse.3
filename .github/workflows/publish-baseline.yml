@@ -1,0 +1,101 @@
+name: Publish Arctic Fuse 3 DEV baseline
+on:
+  push:
+    branches: [kodi-repo]
+    paths:
+      - '.github/workflows/publish-baseline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout distribution branch and source history
+        uses: actions/checkout@v4
+        with:
+          ref: kodi-repo
+          fetch-depth: 0
+      - name: Build original-source parallel-install skin and Kodi catalog
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import io
+          import subprocess
+          import tarfile
+          import xml.etree.ElementTree as ET
+          from zipfile import ZipFile, ZIP_DEFLATED
+
+          ORIGINAL_COMMIT = "1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb"
+          SRC_ID = "skin.arctic.fuse.3"
+          DEV_ID = "skin.arctic.fuse.3.dev"
+          DEV_VER = "3.4.2.1"
+          out = Path("kodi-repository")
+          target = out / DEV_ID
+          target.mkdir(parents=True, exist_ok=True)
+          package = target / (DEV_ID + "-" + DEV_VER + ".zip")
+          source_tar = subprocess.check_output(["git", "archive", "--format=tar", ORIGINAL_COMMIT])
+          source = tarfile.open(fileobj=io.BytesIO(source_tar), mode="r:")
+          entries = {}
+          for entry in source:
+              if not entry.isfile():
+                  continue
+              name = entry.name
+              if name.startswith(".github/") or name in (".gitignore", ".gitattributes"):
+                  continue
+              payload = source.extractfile(entry).read()
+              if name.endswith((".xml", ".json", ".xmltemplate", ".xsp", ".py", ".md", ".txt", ".yml", ".yaml")):
+                  txt = payload.decode("utf-8")
+                  txt = txt.replace(SRC_ID, DEV_ID)
+                  if name == "addon.xml":
+                      txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
+                      txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
+                      txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
+                  payload = txt.encode("utf-8")
+              entries[name] = payload
+
+          manifest = ET.fromstring(entries["addon.xml"])
+          assert manifest.get("id") == DEV_ID
+          assert manifest.get("version") == DEV_VER
+          assert "LICENSE.txt" in entries
+          assert "media/Textures.xbt" in entries
+          assert "1080i/Home.xml" in entries
+          assert "shortcuts/skinvariables-generator.json" in entries
+          with ZipFile(package, "w", compression=ZIP_DEFLATED, compresslevel=6, allowZip64=True) as archive:
+              for name, payload in sorted(entries.items()):
+                  archive.writestr(DEV_ID + "/" + name, payload)
+          with ZipFile(package) as archive:
+              assert archive.testzip() is None
+              assert len(archive.namelist()) >= 3500
+              assert archive.read(DEV_ID + "/addon.xml") == entries["addon.xml"]
+          assert package.stat().st_size < 100 * 1024 * 1024, "GitHub single-file limit exceeded"
+          for art in ("addon.xml", "icon.png", "fanart.jpg"):
+              (target / art).write_bytes(entries[art])
+
+          root = ET.Element("addons")
+          root.append(ET.parse(out / "repository.ntls2000.kodi.dev" / "addon.xml").getroot())
+          root.append(manifest)
+          ET.indent(root, space="    ")
+          catalog = ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
+          (out / "addons.xml").write_bytes(catalog)
+          (out / "addons.xml.md5").write_text(hashlib.md5(catalog).hexdigest() + "\n", encoding="ascii")
+          assert len(ET.parse(out / "addons.xml").getroot()) == 2
+          print("Published source SHA:", ORIGINAL_COMMIT)
+          print("Skin ID:", DEV_ID, "version:", DEV_VER, "files:", len(entries))
+          print("Kodi ZIP bytes:", package.stat().st_size)
+          print("Catalog MD5:", hashlib.md5(catalog).hexdigest())
+          PY
+      - name: Commit complete Kodi repository publication
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
+          if ! git diff --cached --quiet; then
+            git commit -m "release(kodi): baseline Arctic Fuse 3 3.4.2 as side-by-side DEV skin"
+            git push origin HEAD:kodi-repo
+          fi
