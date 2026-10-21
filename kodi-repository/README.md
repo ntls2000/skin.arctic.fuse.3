@@ -7,21 +7,39 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.19`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.20`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.19**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.20**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.19/skin.arctic.fuse.3.dev-3.4.2.19.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.20/skin.arctic.fuse.3.dev-3.4.2.20.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.19 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.20 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Recovery patch — 3.4.2.20: Premium navigation lock
+
+The user reports that **as soon as Spotlight Premium buttons are enabled in 3.4.2.19, Kodi focus/navigation becomes unusable**. The cause is the conditional replacement of Kodi's original focusable controls 311 (Play) and 312 (Info) by separate Premium-only includes, coupled with hiding the existing parent group. This can remove the intended navigation targets.
+
+**This patch restores a SINGLE PERMANENT pair of focusable controls** in both Standard and Premium:
+- Keeps the original Arctic Fuse include `Hub_Spotlight_Button_Circle`, clickable controls `311` and `312`, and their original `onclick`, `onback`, `onright`, `onup` and `ondown` actions.
+- Removes the newly introduced `Hub_Spotlight_Button_Premium` focusable-button include and all conditional replacement call sites.
+- Uses conditional *decorative* groups only. Premium adds a single rectangular 72px background with 32px icon and adapted text placement; Standard retains its native circular design and underline.
+- The original Play group `316` always remains present; cosmetic values use skin variables for spacing and button widths. No focusable control is ever disabled or removed on a style switch.
+- `Style des boutons du Spotlight` still toggles the option and reloads the skin for conditional texture refresh.
+- **The validated service `0.4.8` and all Accueil/Films/Séries playback, Emby ThemeVideo, native Stop and widget logic are unchanged.**
+
+CI adds an explicit structural regression test requiring two unconditional uses of the original button include, one focusable button per include, permanent group 316, retained navigation actions, and unchanged Emby trailer regression tests.
+
+**Emergency recovery when Kodi cannot be navigated:** Close Kodi, back up `%APPDATA%\Kodi\addons\skin.arctic.fuse.3.dev` to a safe location, and extract the 3.4.2.20 release ZIP into `%APPDATA%\Kodi\addons\` with the included folder structure, allowing replacement. Do not extract into the skin folder itself (which would create a nested directory). Restart Kodi and verify navigation first. Users who can still reach Kodi's Add-ons installer should use the normal repository update. If installation or focus is still broken, return to stable skin 3.4.2.18, where all three Spotlights were confirmed operational.
+
+**Status:** ZIP and XML tests are necessary but cannot replace actual focus/navigation testing in Kodi 22. User confirmation is still required before labelling Premium behavior validated.
 
 ## Spotlight Premium Buttons v2 — 3.4.2.19 (skin-only)
 
