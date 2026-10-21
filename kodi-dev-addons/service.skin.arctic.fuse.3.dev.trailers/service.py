@@ -11,6 +11,8 @@ import xbmcgui
 
 TAG = "[AF3DEV.Trailer] "
 HOME_ID = 10000
+HUB_IDS = (1101, 1102, 1103, 1104)
+SUPPORTED_WINDOWS = (HOME_ID,) + HUB_IDS
 HOME_PROPERTY = "AF3DEV.Trailer.Playing"
 POLL_SECONDS = 0.20
 START_DELAY = 1.1
@@ -73,12 +75,23 @@ def _movie_db_trailer(dbid, dbtype):
         return ""
 
 
+def _active_window_id():
+    # Home and the four customizable Arctic Fuse 3 hubs use the same
+    # Spotlight wraplist ID 301, but have independent window properties.
+    if xbmc.getCondVisibility("Window.IsActive(Home)"):
+        return HOME_ID
+    for hub_id in HUB_IDS:
+        if xbmc.getCondVisibility("Window.IsActive(" + str(hub_id) + ")"):
+            return hub_id
+    return None
+
+
 def _spotlight(home):
     """Return item data only while Spotlight is the active metadata source."""
     if not xbmc.getCondVisibility("Skin.HasSetting(Spotlight.AutoTrailer)"):
         return None, "disabled"
-    if not xbmc.getCondVisibility("Window.IsActive(Home)"):
-        return None, "not_home"
+    if _active_window_id() is None:
+        return None, "not_spotlight_window"
     if xbmc.getCondVisibility(
             "Window.IsVisible(DialogVideoInfo.xml) | "
             "Window.IsVisible(DialogContextMenu.xml) | "
@@ -130,6 +143,7 @@ class SpotlightService:
         self.monitor = xbmc.Monitor()
         self.player = xbmc.Player()
         self.home = xbmcgui.Window(HOME_ID)
+        self.active_window_id = HOME_ID
         self.key = None
         self.changed_at = 0.0
         self.slide_advance_requested = False
@@ -228,6 +242,20 @@ class SpotlightService:
 
     def _tick(self):
         now = time.monotonic()
+        active_id = _active_window_id()
+        if active_id != self.active_window_id:
+            # On hub switch, release the previous hub's trailer and property.
+            # Each hub stores TMDbHelper.WidgetContainer on its own window.
+            self._stop_preview("spotlight_window_changed")
+            self.active_window_id = active_id
+            self.home = xbmcgui.Window(active_id if active_id is not None else HOME_ID)
+            self._property(False)
+            self.key = None
+            self.attempted = False
+            self.slide_advance_requested = False
+            self.missing_since = None
+            self.last_state = None
+            _log("Spotlight window switched: " + str(active_id))
         self._update_stop_state(now)
         self._check_late_start(now)
         # The deadline is independent of container visibility: Kodi may
@@ -342,7 +370,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.2: one clock controls Spotlight Stop and next slide; original widget preview retained")
+        _log("Service 0.4.3: shared trailer timer on Home and custom hubs 1101-1104")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
