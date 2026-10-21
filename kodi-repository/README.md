@@ -7,21 +7,41 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.18`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.19`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.18**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.19**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.18/skin.arctic.fuse.3.dev-3.4.2.18.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.19/skin.arctic.fuse.3.dev-3.4.2.19.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.18 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.19 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Spotlight Premium Buttons v2 — 3.4.2.19 (skin-only)
+
+With the user confirming the three Spotlight previews working in **3.4.2.18**, this update intentionally changes **only the look of the Spotlight action buttons**. Companion service **0.4.8 is frozen**: no trailer, hub, Emby, TMDb, video, timer, player or Stop logic was changed.
+
+### Premium design
+
+- Replaces the older detached icon circle and underlined text combination with **two complete 72px-high rectangular buttons**, aligned vertically in a single Spotlight row.
+- **Primary Play/Resume**: 272px wide, light opaque background, dark icon/label with 78px text inset.
+- **Secondary Information**: 306px wide, subtler transparent dark background, white icon/label.
+- An evenly spaced 20px gap separates actions; icon is 32×32 and sits at x=26, centered vertically, **inside the same rectangle** as the text.
+- Focus uses Arctic Fuse's existing theme highlight color with readable selected foreground. The original click actions are preserved for button **311** (Play) and **312** (Info), including widget navigation and refocus actions.
+- **Standard remains the original circular icon plus underline style**, with zero structural edits to that include.
+- XML conditionally expands one style at a time so Kodi has **no duplicate focusable IDs**; switching `Style des boutons du Spotlight` from the skin settings invokes `ReloadSkin()` to make the layout change take effect immediately.
+
+### Regression scope
+
+CI confirms XML well-formedness, both exclusive Standard/Premium expansions and button sizing/focus wiring, as well as every previously passing movie/TV-series ThemeVideo/Emby DialogBusy regression. Service source and version remain **0.4.8**.
+
+**Test:** Install **3.4.2.19** (service remains **0.4.8**). Choose *Premium* in the Spotlight button style setting, inspect **Accueil**, **Films**, and **Séries**; verify both controls are cleanly aligned and Play/Info still work. Toggle back to *Standard* to verify the original appearance. Actual screen presentation still requires testing in Kodi; mock XML checks cannot guarantee visual quality.
 
 ## Series Spotlight Emby ThemeVideo support — 3.4.2.18
 
