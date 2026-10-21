@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.23"
+          DEV_VER = "3.4.2.24"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -104,8 +104,12 @@ jobs:
           assert '<value>Standard (Premium suspendu)</value>' in home_xml
           assert 'Skin.HasSetting(Spotlight.PremiumButtons)' not in home_xml
           assert 'name="AF3DEV_SpotlightFocusedLabelColor"' in home_xml
-          assert '<onclick>Skin.ToggleSetting(Spotlight.PremiumButtons)</onclick>' in setting_source
-          assert '<onclick>ReloadSkin()</onclick>' in setting_source
+          # 3.4.2.24: remove only the obsolete Premium switch from Settings.
+          # The native Standard Spotlight focus tree and Emby service stay frozen.
+          assert 'description="Spotlight Buttons Style"' not in setting_source
+          assert '<label>Style des boutons du Spotlight</label>' not in setting_source
+          assert 'Skin.ToggleSetting(Spotlight.PremiumButtons)' not in setting_source
+          assert '<label>Activer les trailers dans le Spotlight</label>' in setting_source
           print("Safe rollback PASSED: permanent native 311/312, original Standard layout, 316 and widget navigation; Premium visual bypassed in both setting modes")
           assert "shortcuts/skinvariables-generator.json" in entries
           assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.8" and x.get("optional") is None for x in manifest.findall("./requires/import"))
@@ -399,10 +403,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.23"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.24"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.23.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.24.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
