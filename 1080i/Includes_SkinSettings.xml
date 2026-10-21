@@ -61,6 +61,17 @@
             <onclick>Skin.ToggleSetting(HomeSwitcher.EnableIcons)</onclick>
             <visible>!Skin.HasSetting(HomeSwitcher.Vertical)</visible>
         </include>
+        <include content="Settings_Button" description="Home Navigation Tab Shape">
+            <param name="dialog">false</param>
+            <param name="window">skinsettings</param>
+            <param name="baseid">$PARAM[baseid]</param>
+            <param name="id">012</param>
+            <param name="control">button</param>
+            <label>Style des onglets</label>
+            <label2>$VAR[AF3DEV_TabShapeLabel]</label2>
+            <onclick>Skin.ToggleSetting(HomeSwitcher.PremiumTabs)</onclick>
+            <visible>!Skin.HasSetting(HomeSwitcher.Vertical) + !Skin.HasSetting(HomeSwitcher.EnableIcons)</visible>
+        </include>
         <include content="Settings_Button" description="Header">
             <param name="dialog">false</param>
             <param name="window">skinsettings</param>
@@ -96,6 +107,17 @@
             <label>$LOCALIZE[31060]</label>
             <selected>Skin.HasSetting(Spotlight.EnableSlide)</selected>
             <onclick>Skin.ToggleSetting(Spotlight.EnableSlide)</onclick>
+        </include>
+        <include content="Settings_Button" description="Spotlight Trailer Preview">
+            <param name="dialog">false</param>
+            <param name="window">skinsettings</param>
+            <param name="baseid">$PARAM[baseid]</param>
+            <param name="id">013</param>
+            <param name="control">radiobutton</param>
+            <label>Spotlight : bandes-annonces auto</label>
+            <label2>Arrêt 2 secondes avant le défilement</label2>
+            <selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>
+            <onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>
         </include>
         <include content="Settings_Button" description="Spotlight">
             <param name="dialog">false</param>
