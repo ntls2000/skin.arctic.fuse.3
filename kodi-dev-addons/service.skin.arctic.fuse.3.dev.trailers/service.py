@@ -32,6 +32,12 @@ def _interval():
     return values.get(xbmc.getInfoLabel("Skin.String(AutoScrollTime)").strip().lower(), 12)
 
 
+def _preview_cutoff():
+    # Exact same AutoScrollTime values as Includes_Defaults.xml / Defs_AutoScroll.
+    # No artificial 15-second cap: a 30s slide stops at 28s, 60s at 58s.
+    return max(0.0, _interval() - STOP_LEAD_SECONDS)
+
+
 def _normalize_trailer(uri):
     uri = (uri or "").strip()
     if not uri:
@@ -225,7 +231,7 @@ class SpotlightService:
         # The deadline is independent of container visibility: Kodi may
         # transiently empty/rebuild 301 while opening an Emby video.
         if (self.pending or self.owned) and self.key is not None:
-            cutoff = min(max(0.0, _interval() - STOP_LEAD_SECONDS), 15.0)
+            cutoff = _preview_cutoff()
             if now - self.changed_at >= cutoff:
                 self._stop_preview("before_auto_scroll")
 
@@ -259,7 +265,9 @@ class SpotlightService:
             self.trailer, source = _resolve_trailer(item, self.home)
             _log("Spotlight item: " + ("trailer " + source if self.trailer else
                                        "no trailer") + "; DBID " +
-                 ("present" if item["dbid"] else "absent"))
+                 ("present" if item["dbid"] else "absent") +
+                 "; autoscroll=" + str(_interval()) + "s; stop_at=" +
+                 str(_preview_cutoff()) + "s")
 
         if self.owned:
             try:
@@ -289,7 +297,7 @@ class SpotlightService:
                 _log("Trailer did not start within six seconds", xbmc.LOGWARNING)
 
         elapsed = now - self.changed_at
-        cutoff = min(max(0.0, _interval() - STOP_LEAD_SECONDS), 15.0)
+        cutoff = _preview_cutoff()
         if elapsed >= cutoff:
             if self.pending or self.owned:
                 self._stop_preview("before_auto_scroll")
@@ -313,7 +321,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.4.0: native nonblocking Stop, original widget preview retained")
+        _log("Service 0.4.1: exact AutoScrollTime minus two seconds; native nonblocking Stop")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
