@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.21"
+          DEV_VER = "3.4.2.22"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -92,8 +92,8 @@ jobs:
           assert '<visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>' not in stable.split('<control type="group" id="$PARAM[groupid]">',1)[1].split('<control type="group">',1)[0], "Do not hide the button's parent"
           assert '<nested />' in stable
           assert '<left>$PARAM[textleft]</left>' in stable
-          # 3.4.2.21 visual regression: equal 420px buttons, Standard offsets and
-          # make the art surface and label share a 72px-high Premium row.
+          # 3.4.2.22: one physical grouplist child per native button. 
+          # Do not split art from label into separate sibling controls.
           assert stable.index('<left>$PARAM[textleft]</left>') < stable.index('<nested />'), "Nested original 140px left must override default in Standard"
           assert '<height>$PARAM[button_height]</height>' in stable
           assert '<textoffsetx>$PARAM[text_offset]</textoffsetx>' in stable
@@ -103,7 +103,28 @@ jobs:
           assert '<left>$VAR[AF3DEV_SpotlightPlayButtonLeft]</left>' in hub_xml
           assert hub_xml.count('<param name="premium_width">420</param>') == 3
           assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
-          assert '<value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-60</value>' in home_xml, "Info label must align with its background after 60px icon item"
+          # Both Includes resolve to a SINGLE group item in grouplist 310;
+          # nested native button 311 or 312 stays present regardless of mode.
+          hub_tree = ET.fromstring(hub_xml)
+          spotlight_button = next(x for x in hub_tree.findall("include")
+                                  if x.get("name") == "Hub_Spotlight_Button_Circle")
+          definition = spotlight_button.find("definition")
+          assert len(definition) == 1, "Decorative group and native button must not become two grouplist siblings"
+          wrapper = definition[0]
+          assert wrapper.tag == "control" and wrapper.get("type") == "group"
+          assert wrapper.get("id") == "$PARAM[groupid]"
+          assert wrapper.find("width").text == "$PARAM[layout_width]"
+          assert wrapper.find("height").text == "160"
+          assert wrapper.find("visible") is None, "Native focus group must never be hidden"
+          assert len([x for x in wrapper.iter("control")
+                      if x.get("type") == "button" and x.get("id") == "$PARAM[id]"]) == 1
+          assert wrapper[-1].tag == "control" and wrapper[-1].get("type") == "button"
+          assert '<param name="layout_width">$VAR[AF3DEV_SpotlightPlayVisualWidth]</param>' in hub_xml
+          assert '<param name="layout_width">$VAR[AF3DEV_SpotlightInfoVisualWidth]</param>' in hub_xml
+          assert '<onleft>311</onleft>' in hub_xml and '<onright>312</onright>' in hub_xml
+          for field in ("PlayVisualWidth", "InfoVisualWidth"):
+              assert 'name="AF3DEV_Spotlight' + field + '"' in home_xml
+          assert '<value condition="Skin.HasSetting(Spotlight.PremiumButtons)">0</value>' in home_xml, "Premium label must start at its own group origin"
           for field in ('PlayButtonLeft', 'PlayButtonWidth', 'PlayButtonMax',
                         'ButtonHeight', 'TextOffset', 'TextAlignY'):
               assert 'name="AF3DEV_Spotlight' + field + '"' in home_xml
@@ -123,7 +144,7 @@ jobs:
           assert '<onright>312</onright>' in hub_xml
           assert '<onclick>Skin.ToggleSetting(Spotlight.PremiumButtons)</onclick>' in setting_source
           assert '<onclick>ReloadSkin()</onclick>' in setting_source
-          print("Spotlight Premium navigation recovery PASSED: permanent 311/312 in both modes, original actions and focus path")
+          print("Spotlight unified row PASSED: one grouplist child per native focus ID 311/312; group 316, callbacks and Emby unchanged")
           assert "shortcuts/skinvariables-generator.json" in entries
           assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.8" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
@@ -416,10 +437,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.21"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.22"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.21.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.22.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
