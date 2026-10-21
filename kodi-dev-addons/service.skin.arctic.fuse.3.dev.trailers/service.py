@@ -150,12 +150,14 @@ class SpotlightService:
             return
         try:
             if self.player.isPlayingVideo():
-                playing = self.player.getPlayingFile()
+                # The Kodi YouTube plug-in can replace the requested plugin://
+                # URI with its resolved stream URL during the same playback.
+                # URI equality is NOT a valid ownership test. Keep ownership
+                # until the player stops, a user opens fullscreen, or the
+                # Spotlight is left.
                 fullscreen = xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")
-                taken_over = (self.owned and self.owned_file and playing
-                              and playing != self.owned_file)
-                if taken_over or fullscreen:
-                    _log("Relinquished video player (external playback)")
+                if fullscreen:
+                    _log("Fullscreen playback detected; avoid stopping user media")
                 else:
                     self.player.stop()
                     _log("Stopped Spotlight trailer: " + reason)
@@ -193,11 +195,8 @@ class SpotlightService:
                 if not self.player.isPlayingVideo():
                     self._forget_preview()
                     return
-                playing = self.player.getPlayingFile()
-                if self.owned_file and playing and playing != self.owned_file:
-                    self._forget_preview()
-                    _log("Kodi player switched to a different video; release ownership")
-                    return
+                # A stream resolver may change getPlayingFile() mid-preview.
+                # Don't relinquish ownership solely because the URI changed.
             except RuntimeError:
                 self._forget_preview()
                 return
@@ -242,7 +241,7 @@ class SpotlightService:
             _log("Trailer preview launch failed: " + str(err), xbmc.LOGWARNING)
 
     def run(self):
-        _log("Service 0.3.0: native widget video preserved; Spotlight-only preview")
+        _log("Service 0.3.1: native widget video preserved; resolved trailer URL-safe stop")
         self._property(False)
         try:
             while not self.monitor.waitForAbort(POLL_SECONDS):
