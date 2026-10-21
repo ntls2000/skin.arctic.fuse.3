@@ -391,20 +391,42 @@
                 <centertop>50%</centertop>
                 <control type="group">
                     <visible>!Control.HasFocus($PARAM[id])</visible>
-                    <!-- Unfocused: permanent white outline and translucent
-                         centre; original focusable control stays untouched. -->
+                    <!-- Transparent inactive card. The optional dark tint is
+                         painted FIRST; four actual thin strokes form the border,
+                         so its interior never inherits an opaque white fill. -->
                     <control type="image">
                         <width>$PARAM[card_width]</width>
                         <height>72</height>
                         <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="CCFFFFFF">common/box.png</texture>
+                        <texture border="18" colordiffuse="$PARAM[card_bg]">common/box.png</texture>
                     </control>
-                    <control type="image">
-                        <left>2</left>
-                        <width>406</width>
-                        <height>68</height>
+                    <control type="group">
+                        <width>$PARAM[card_width]</width>
+                        <height>72</height>
                         <centertop>50%</centertop>
-                        <texture border="16" colordiffuse="$PARAM[card_bg]">common/box.png</texture>
+                        <!-- Top, bottom, left and right: 2px outline. -->
+                        <control type="image">
+                            <width>$PARAM[card_width]</width>
+                            <height>2</height>
+                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
+                        </control>
+                        <control type="image">
+                            <top>70</top>
+                            <width>$PARAM[card_width]</width>
+                            <height>2</height>
+                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
+                        </control>
+                        <control type="image">
+                            <width>2</width>
+                            <height>72</height>
+                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
+                        </control>
+                        <control type="image">
+                            <left>408</left>
+                            <width>2</width>
+                            <height>72</height>
+                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
+                        </control>
                     </control>
                     <control type="image">
                         <left>24</left>
