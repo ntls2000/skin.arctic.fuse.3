@@ -376,7 +376,8 @@
         <param name="size">120</param>
         <param name="left">0</param>
         <param name="width">auto</param>
-        <param name="textleft">20</param>
+        <param name="layout_width">240</param>
+        <param name="textleft">140</param>
         <param name="button_height">80</param>
         <param name="text_offset">0</param>
         <param name="aligny">top</param>
@@ -385,16 +386,18 @@
         <param name="premium_icon_color">FF202020</param>
         <param name="premium_text_color">main_fg_90</param>
         <definition>
+            <!-- ONE grouplist item per action, in both styles. Each fixed
+                 wrapper contains its original focusable button and its art.
+                 Kodi must not lay out the icon group and text as two items. -->
             <control type="group" id="$PARAM[groupid]">
-                <!-- Always retain this group so focusable buttons never vanish.
-                     Premium replaces only the drawings, not the controls. -->
-                <left>$PARAM[left]</left>
-                <width>$PARAM[size]</width>
-                <height>$PARAM[size]</height>
-                <centertop>50%</centertop>
-                <!-- Rectangular premium surface, icon and text are ONE
-                     visual button. The original focusable button $PARAM[id]
-                     is preserved outside this drawing-only group. -->
+                <width>$PARAM[layout_width]</width>
+                <height>160</height>
+                <control type="group">
+                    <left>$PARAM[left]</left>
+                    <width>$PARAM[size]</width>
+                    <height>$PARAM[size]</height>
+                    <centertop>50%</centertop>
+                    <!-- The Premium card/32px icon are graphics only. -->
                 <control type="group">
                     <visible>Skin.HasSetting(Spotlight.PremiumButtons)</visible>
                     <width>$PARAM[premium_width]</width>
@@ -445,8 +448,8 @@
                         <texture background="true" colordiffuse="$VAR[ColorSelected]">$PARAM[image]</texture>
                     </control>
                 </control>
-            </control>
-            <control type="button" id="$PARAM[id]">
+                </control>
+                <control type="button" id="$PARAM[id]">
                 <width max="$PARAM[max]">$PARAM[width]</width>
                 <height>$PARAM[button_height]</height>
                 <centertop>50%</centertop>
@@ -463,6 +466,7 @@
                      (140 in Standard) wins; Premium passes its own geometry. -->
                 <left>$PARAM[textleft]</left>
                 <nested />
+                </control>
             </control>
         </definition>
     </include>
@@ -543,6 +547,7 @@
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">$VAR[AF3DEV_SpotlightPlayButtonMax]</param>
                             <param name="width">$VAR[AF3DEV_SpotlightPlayButtonWidth]</param>
+                            <param name="layout_width">$VAR[AF3DEV_SpotlightPlayVisualWidth]</param>
                             <param name="textleft">$VAR[AF3DEV_SpotlightPlayTextLeft]</param>
                             <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
                             <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
@@ -579,12 +584,18 @@
                         <param name="left">$VAR[AF3DEV_SpotlightInfoIconLeft]</param>
                         <param name="textleft">$VAR[AF3DEV_SpotlightInfoTextLeft]</param>
                         <param name="width">$VAR[AF3DEV_SpotlightInfoButtonWidth]</param>
+                        <param name="layout_width">$VAR[AF3DEV_SpotlightInfoVisualWidth]</param>
                         <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
                         <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
                         <param name="aligny">$VAR[AF3DEV_SpotlightTextAlignY]</param>
                         <param name="premium_width">420</param>
                         <param name="premium_background">990A0A0A</param>
                         <param name="premium_icon_color">main_fg_100</param>
+                        <onleft>311</onleft>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">SetProperty(Bumper.Direction,Up,Home)</onup>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">ActivateWindow(1180)</onup>
+                        <onup condition="!Skin.HasSetting(HomeSwitcher.Vertical)">300</onup>
+                        <ondown>$VAR[Hub_Action_Widgets]</ondown>
                         <onclick>SetFocus(301)</onclick>
                         <onclick>$VAR[Action_FullscreenWidget_InfoButton]</onclick>
                         <onclick>SetFocus(312)</onclick>
