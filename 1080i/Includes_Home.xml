@@ -9,7 +9,7 @@
     <!-- Rendering-only values; focusable IDs and onclick actions remain
          identical for Standard and Premium, even when the option is toggled. -->
     <variable name="AF3DEV_SpotlightPlayGroupWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">414</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">440</value>
         <value>240</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayTextLeft">
@@ -29,7 +29,7 @@
         <value>20</value>
     </variable>
     <variable name="AF3DEV_SpotlightInfoButtonWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">302</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
         <value>auto</value>
     </variable>
 
@@ -40,7 +40,7 @@
         <value>140</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayButtonWidth">
-        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">392</value>
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">420</value>
         <value>auto</value>
     </variable>
     <variable name="AF3DEV_SpotlightPlayButtonMax">
