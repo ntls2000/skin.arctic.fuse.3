@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.12"
+          DEV_VER = "3.4.2.13"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.2" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.3" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -75,7 +75,7 @@ jobs:
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.2" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.3" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
@@ -88,13 +88,17 @@ jobs:
           xbmc_mock.LOGWARNING = 2
           xbmc_mock.LOGERROR = 3
           xbmc_mock.log = lambda *args, **kwargs: None
-          state = {"enabled": True, "home": True, "widgets_focused": False, "fullscreen": False,
+          state = {"enabled": True, "home": True, "active_window": 10000,
+                   "widgets_focused": False, "fullscreen": False,
                    "num_items": "2", "position": "1", "title": "First movie", "autoscroll": "10s"}
           def get_cond(condition):
               if condition.startswith("Skin.HasSetting(Spotlight.AutoTrailer)"):
                   return state["enabled"]
               if condition.startswith("Window.IsActive(Home)"):
-                  return state["home"]
+                  return state["active_window"] == 10000
+              for hub_id in (1101, 1102, 1103, 1104):
+                  if condition.startswith("Window.IsActive(" + str(hub_id) + ")"):
+                      return state["active_window"] == hub_id
               if condition.startswith("Window.IsVisible(DialogVideoInfo.xml)"):
                   return False
               if condition.startswith("ControlGroup(500).HasFocus()"):
@@ -163,7 +167,9 @@ jobs:
           gui_mock = types.ModuleType("xbmcgui")
           xbmc_mock.Player = lambda: player
           xbmc_mock.Monitor = MockMonitor
-          gui_mock.Window = lambda window_id: home
+          windows = {10000: home}
+          windows.update({hub: MockWindow() for hub in (1101, 1102, 1103, 1104)})
+          gui_mock.Window = lambda window_id: windows[window_id]
           old_modules = {name: sys.modules.get(name) for name in ("xbmc", "xbmcgui")}
           sys.modules["xbmc"] = xbmc_mock
           sys.modules["xbmcgui"] = gui_mock
@@ -311,7 +317,7 @@ jobs:
               # Native auto-scroll must be gated ONLY for the preview-enabled Home.
               hub_xml = entries["1080i/Includes_Hubs.xml"].decode("utf-8")
               assert "Control.Move(301,1)" in service_py.decode("utf-8")
-              assert "[!Skin.HasSetting(Spotlight.AutoTrailer) | !Window.IsActive(Home)]" in hub_xml
+              assert "[!ControlGroup(310).HasFocus() | System.IdleTime(3)] + !Skin.HasSetting(Spotlight.AutoTrailer)" in hub_xml
               print("Spotlight synchronized tests PASSED: Stop at 28s, move at 30s, exactly once")
 
               # Changing the skin setting must be reflected without restart.
@@ -321,9 +327,58 @@ jobs:
               assert namespace["_preview_cutoff"]() == 8
               print("AutoScrollTime tests PASSED: all nine intervals and real 30-second stop")
 
+              # Both the default and the new Premium Spotlight button styles
+              # must use the same control IDs / click actions.
+              assert "<label>Style des boutons du Spotlight</label>" in setting_source
+              assert "Skin.ToggleSetting(Spotlight.PremiumButtons)" in setting_source
+              assert 'Skin.HasSetting(Spotlight.PremiumButtons)' in hub_xml
+              assert 'Texture_Highlight_Spotlight_Premium' in hub_xml
+              assert b'common/box.png' in entries["1080i/Includes_Textures.xml"]
+              assert b'AF3DEV_SpotlightButtonStyle' in entries["1080i/Includes_Home.xml"]
+              ET.fromstring(entries["1080i/Includes_Hubs.xml"])
+
+              # Each custom Hub 1101-1104 is a separate Kodi window with its
+              # own Spotlight 301 and independent TMDbHelper metadata.
+              assert namespace["_active_window_id"]() == 10000
+              state["autoscroll"] = "10s"
+              for hub_id in (1101, 1102, 1103, 1104):
+                  state["active_window"] = hub_id
+                  state["position"] = "1"
+                  state["title"] = "Hub Spotlight " + str(hub_id)
+                  windows[hub_id].setProperty("TMDbHelper.WidgetContainer", "301")
+                  service._tick()
+                  assert service.active_window_id == hub_id, "Hub not selected"
+                  assert service.home is windows[hub_id], "Wrong hub metadata source"
+                  assert namespace["_active_window_id"]() == hub_id
+                  item, hub_state = namespace["_spotlight"](windows[hub_id])
+                  assert hub_state == "spotlight" and item["count"] == 2
+                  service.stop_queued_at -= 1.0
+                  service.changed_at -= 2.0
+                  service._tick()
+                  service._tick()
+                  assert player.playing and service.owned, "Trailer failed on hub " + str(hub_id)
+                  previous_stops = player.stopped
+                  service.changed_at -= 7.0
+                  service._tick()
+                  assert player.stopped == previous_stops + 1, "Stop failed on hub " + str(hub_id)
+                  service.stop_queued_at -= 1.0
+              # Leaving hubs returns to the Home window without inheriting
+              # the previous hub's trailer or its selection timer.
+              state["active_window"] = 10000
+              state["position"] = "9"
+              service._tick()
+              assert service.active_window_id == 10000
+              assert service.home is home
+              state["active_window"] = -1
+              service._tick()
+              assert service.active_window_id is None
+              assert namespace["_active_window_id"]() is None
+              print("Hub preview tests PASSED: custom windows 1101-1104, stop, switch, return Home")
+              print("Spotlight style tests PASSED: Standard and Premium selection")
+
               assert b"AF3DEV.Trailer.Playing" not in entries["1080i/Includes_Hubs.xml"]
               assert b'<include name="Background_Video">' in entries["1080i/Includes_Background.xml"]
-              print("Kodi mocks PASSED: native async Stop, widgets, delayed startup, no cache, full autoscroll intervals")
+              print("Kodi mocks PASSED: native async Stop, widgets, custom hubs, styles, autoscroll")
           finally:
               for name, previous in old_modules.items():
                   if previous is None:
@@ -381,11 +436,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "ui(kodi): rename Spotlight trailer setting without altering playback 3.4.2.12"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.13"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.12.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.13.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.2.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.3.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
