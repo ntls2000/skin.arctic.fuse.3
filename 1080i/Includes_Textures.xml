@@ -71,6 +71,13 @@
         <texturenofocus border="18" colordiffuse="990A0A0A">common/box.png</texturenofocus>
     </include>
 
+    <!-- The Premium background and icon are already painted by the
+         original button's adjacent decorative group. Suppress any second
+         highlight texture on its label control, avoiding split panels. -->
+    <include name="Texture_Highlight_Spotlight_Premium_Transparent">
+        <texturefocus />
+        <texturenofocus />
+    </include>
     <include name="Texture_Highlight_ToggleButton_FakeFocus_H">
         <texturenofocus />
         <texturefocus colordiffuse="$VAR[ColorHighlight]" border="40">common/menu.png</texturefocus>
