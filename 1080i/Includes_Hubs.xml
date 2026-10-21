@@ -423,6 +423,55 @@
         </definition>
     </include>
 
+    <!-- Premium v2: the image and the label sit inside the same clickable
+         72px rectangle. Standard uses the original circular control below. -->
+    <include name="Hub_Spotlight_Button_Premium">
+        <param name="id">311</param>
+        <param name="width">272</param>
+        <param name="primary">false</param>
+        <param name="label">$VAR[Label_FullscreenWidget_PlayButton]</param>
+        <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
+        <param name="idletext">main_fg_100</param>
+        <definition>
+            <control type="group">
+                <width>$PARAM[width]</width>
+                <height>80</height>
+                <centertop>50%</centertop>
+                <control type="button" id="$PARAM[id]">
+                    <top>4</top>
+                    <width>$PARAM[width]</width>
+                    <height>72</height>
+                    <align>left</align>
+                    <aligny>center</aligny>
+                    <textoffsetx>78</textoffsetx>
+                    <font>font_main_bold</font>
+                    <textcolor>$PARAM[idletext]</textcolor>
+                    <focusedcolor>$VAR[ColorSelected]</focusedcolor>
+                    <include condition="$PARAM[primary]">Texture_Highlight_Spotlight_Premium_Primary</include>
+                    <include condition="!$PARAM[primary]">Texture_Highlight_Spotlight_Premium_Secondary</include>
+                    <label>$PARAM[label]</label>
+                    <nested />
+                </control>
+                <control type="image">
+                    <left>26</left>
+                    <width>32</width>
+                    <height>32</height>
+                    <centertop>50%</centertop>
+                    <texture colordiffuse="$PARAM[idletext]" background="true">$PARAM[image]</texture>
+                    <visible>!Control.HasFocus($PARAM[id])</visible>
+                </control>
+                <control type="image">
+                    <left>26</left>
+                    <width>32</width>
+                    <height>32</height>
+                    <centertop>50%</centertop>
+                    <texture colordiffuse="$VAR[ColorSelected]" background="true">$PARAM[image]</texture>
+                    <visible>Control.HasFocus($PARAM[id])</visible>
+                </control>
+            </control>
+        </definition>
+    </include>
+
     <include name="Hub_Spotlight_OnLeft">
         <include>Hub_Grouplist_OnLeft</include>
         <onleft condition="$EXP[Exp_Hubs_Spotlight_HasItems] + !Skin.HasSetting(HomeSwitcher.Vertical)">Control.Move(301,-1)</onleft>
@@ -488,6 +537,7 @@
                     </control>
 
                     <control type="group" id="316">
+                        <visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>
                         <width>240</width>
                         <orientation>horizontal</orientation>
 
@@ -515,7 +565,7 @@
                         </include>
                     </control>
 
-                    <include content="Hub_Spotlight_Button_Circle">
+                    <include content="Hub_Spotlight_Button_Circle" condition="!Skin.HasSetting(Spotlight.PremiumButtons)">
                         <param name="id">312</param>
                         <param name="groupid">322</param>
                         <param name="label">$VAR[Label_FullscreenWidget_InfoButton]</param>
@@ -530,6 +580,58 @@
                             <param name="id">311</param>
                             <param name="window">$PARAM[window]</param>
                         </include>
+                    </include>
+
+                    <!-- Conditional includes keep IDs 311 and 312 unique. -->
+                    <include content="Hub_Spotlight_Button_Premium" condition="Skin.HasSetting(Spotlight.PremiumButtons)">
+                        <param name="id">311</param>
+                        <param name="width">272</param>
+                        <param name="primary">true</param>
+                        <param name="idletext">FF202020</param>
+                        <param name="label">$VAR[Label_FullscreenWidget_PlayButton]</param>
+                        <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
+                        <onclick>SetFocus(301)</onclick>
+                        <onclick condition="!String.StartsWith(Container(301).ListItem.FolderPath,videodb://)">Action(select)</onclick>
+                        <onclick condition="String.StartsWith(Container(301).ListItem.FolderPath,videodb://)">Action(play)</onclick>
+                        <onclick>SetFocus(311)</onclick>
+                        <include content="Hub_Spotlight_Button">
+                            <param name="id">311</param>
+                            <param name="window">$PARAM[window]</param>
+                        </include>
+                        <include>Hub_Spotlight_OnLeft</include>
+                        <onright>312</onright>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">SetProperty(Bumper.Direction,Up,Home)</onup>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">ActivateWindow(1180)</onup>
+                        <onup condition="!Skin.HasSetting(HomeSwitcher.Vertical)">300</onup>
+                        <ondown>$VAR[Hub_Action_Widgets]</ondown>
+                    </include>
+
+                    <control type="group">
+                        <visible>Skin.HasSetting(Spotlight.PremiumButtons)</visible>
+                        <width>20</width>
+                        <height>1</height>
+                    </control>
+
+                    <include content="Hub_Spotlight_Button_Premium" condition="Skin.HasSetting(Spotlight.PremiumButtons)">
+                        <param name="id">312</param>
+                        <param name="width">306</param>
+                        <param name="primary">false</param>
+                        <param name="idletext">main_fg_100</param>
+                        <param name="label">$VAR[Label_FullscreenWidget_InfoButton]</param>
+                        <param name="image">$VAR[Image_FullscreenWidget_InfoButton]</param>
+                        <onclick>SetFocus(301)</onclick>
+                        <onclick>$VAR[Action_FullscreenWidget_InfoButton]</onclick>
+                        <onclick>SetFocus(312)</onclick>
+                        <include content="Hub_Spotlight_Button">
+                            <param name="id">312</param>
+                            <param name="window">$PARAM[window]</param>
+                        </include>
+                        <onleft>311</onleft>
+                        <onright>noop</onright>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">SetProperty(Bumper.Direction,Up,Home)</onup>
+                        <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">ActivateWindow(1180)</onup>
+                        <onup condition="!Skin.HasSetting(HomeSwitcher.Vertical)">300</onup>
+                        <ondown>$VAR[Hub_Action_Widgets]</ondown>
                     </include>
 
                     <control type="image" id="315">
