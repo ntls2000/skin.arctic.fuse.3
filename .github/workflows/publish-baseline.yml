@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.4"
+          DEV_VER = "3.4.2.5"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.1.0" optional="true" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.2.0" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -69,12 +69,49 @@ jobs:
           assert "media/Textures.xbt" in entries
           assert "1080i/Home.xml" in entries
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("optional") == "true" for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.2.0" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
           service_py = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/service.py"])
           compile(service_py, "service.py", "exec")
+          # Exercise URI and Kodi database fallback logic with mocked Kodi modules.
+          import sys, types
+          xbmc_mock = types.ModuleType("xbmc")
+          xbmc_mock.LOGINFO = 1
+          xbmc_mock.LOGWARNING = 2
+          xbmc_mock.LOGERROR = 3
+          xbmc_mock.log = lambda *args, **kw: None
+          xbmc_mock.getInfoLabel = lambda expr: {
+              "Container(301).NumItems": "2",
+              "Container(301).ListItem.Title": "Test movie",
+              "Container(301).ListItem.DBID": "123",
+              "Container(301).ListItem.DBType": "movie",
+              "Container(301).CurrentItem": "1",
+              "Container(301).ListItem.FileNameAndPath": "videodb://movies/titles/123/",
+          }.get(expr, "")
+          xbmc_mock.getCondVisibility = lambda condition: True
+          xbmc_mock.executeJSONRPC = lambda request: '{"result":{"moviedetails":{"trailer":"plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"}}}'
+          gui_mock = types.ModuleType("xbmcgui")
+          old_modules = {name: sys.modules.get(name) for name in ("xbmc", "xbmcgui")}
+          sys.modules["xbmc"] = xbmc_mock
+          sys.modules["xbmcgui"] = gui_mock
+          try:
+              namespace = {"__name__": "test_import"}
+              exec(compile(service_py, "service.py", "exec"), namespace)
+              assert namespace["_normalize_trailer"]("https://www.youtube.com/watch?v=ABCDEFGHIJK") == "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"
+              assert namespace["_normalize_trailer"]("javascript:bad") == ""
+              assert namespace["_movie_db_trailer"]("123", "movie") == "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"
+              spotlight, state = namespace["_spotlight"]()
+              assert state == "ready" and spotlight["dbid"] == "123"
+              print("Mock Kodi tests passed: trailer info, JSON-RPC fallback, YouTube resolution")
+          finally:
+              for name, previous in old_modules.items():
+                  if previous is None:
+                      sys.modules.pop(name, None)
+                  else:
+                      sys.modules[name] = previous
+
           companion = ET.fromstring(service_xml)
           assert companion.get("id") == "service.skin.arctic.fuse.3.dev.trailers"
           service_id = companion.get("id")
@@ -125,11 +162,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): publish premium tabs and companion Spotlight preview 3.4.2.4"
+            git commit -m "fix(kodi): install trailer service with skin and publish diagnostic 3.4.2.5"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.4.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.5.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.1.0.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.2.0.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
