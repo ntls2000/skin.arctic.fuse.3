@@ -7,21 +7,31 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.20`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.21`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.20**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.21**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.20/skin.arctic.fuse.3.dev-3.4.2.20.zip) and choose **Install from ZIP**.
+Alternatively download the same verified Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.21/skin.arctic.fuse.3.dev-3.4.2.21.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.20 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.21 archive has been validated with both Python and GNU unzip, from the Git blob and after HTTP download from the public Raw GitHub URL **and** the GitHub Releases mirror. Do not install any earlier version.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
+
+## Visual alignment fix — 3.4.2.21: Premium Spotlight buttons (awaiting Kodi feedback)
+
+The user's actual Kodi 22 screenshot of 3.4.2.20 **did not validate the Premium design**: Play/Resume was rendered below the button row while the Info caption and rectangle overlapped. This is a visual regression, not a request to modify playback.
+
+Only `1080i/Includes_Hubs.xml` and `1080i/Includes_Home.xml` were edited. The original permanently focusable buttons **311/312**, their actions, the parent Play group **316**, the Standard option, and the original three Spotlight/hub/video flows are preserved. No code or dependencies were added to the frozen Emby service **0.4.8**.
+
+Premium now assigns each rectangular action a **420x72** painting surface with a **32x32 icon at x=26**, text inset **78**, and **20px horizontal space** between actions. Both captions are vertically centered. The button defaults are applied before each call site's `<nested />` so the native Standard Play offset of **140px** takes precedence, while the Premium Play offset is **0px**. The 316 group is explicitly 160px high and the Info caption compensates for its existing 60px decorative group. No new focusable controls or conditional button substitutions are introduced.
+
+The GitHub build checks XML validity, permanent focus IDs, geometry assertions, Emby 0.4.8 regression and ZIP integrity. **Automated tests are not proof of correct Premium rendering in Kodi 22; the user must test and validate 3.4.2.21.**
 
 ## Recovery patch — 3.4.2.20: Premium navigation lock
 
