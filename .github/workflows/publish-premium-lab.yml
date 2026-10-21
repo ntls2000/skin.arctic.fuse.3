@@ -1,0 +1,152 @@
+name: Build isolated Arctic Fuse Premium Lab
+
+on:
+  push:
+    branches: [kodi-repo]
+    paths:
+      - '.github/workflows/publish-premium-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lab-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout distribution branch and source history
+        uses: actions/checkout@v4
+        with:
+          ref: kodi-repo
+          fetch-depth: 0
+      - name: Build isolated side-by-side Kodi skin
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev-kodi22 lab-premium-spotlight
+          python3 - <<'PY'
+          import io
+          import subprocess
+          import tarfile
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+
+          SRC = 'skin.arctic.fuse.3'
+          LAB = 'skin.arctic.fuse.3.premium.lab'
+          VERSION = '3.4.2.25'
+          SERVICE = 'service.skin.arctic.fuse.3.dev.trailers'
+          out = Path('/tmp') / f'{LAB}-{VERSION}.zip'
+
+          changed = subprocess.check_output([
+              'git', 'diff', '--name-only',
+              'origin/dev-kodi22...origin/lab-premium-spotlight'
+          ], text=True).splitlines()
+          assert changed == ['1080i/Includes_Hubs.xml'], (
+              'Lab branch must alter ONLY original Spotlight XML', changed)
+
+          # Source Emby service 0.4.8 must remain byte-identical to DEV baseline.
+          for name in ('addon.xml', 'service.py'):
+              p = f'kodi-dev-addons/{SERVICE}/{name}'
+              lab_bytes = subprocess.check_output([
+                  'git', 'show', f'origin/lab-premium-spotlight:{p}'])
+              stable_bytes = subprocess.check_output([
+                  'git', 'show', f'origin/dev-kodi22:{p}'])
+              assert lab_bytes == stable_bytes, f'Frozen Emby source changed: {p}'
+
+          source_tar = subprocess.check_output([
+              'git', 'archive', '--format=tar', 'origin/lab-premium-spotlight'])
+          files = {}
+          with tarfile.open(fileobj=io.BytesIO(source_tar), mode='r:') as archive:
+              for entry in archive:
+                  if not entry.isfile():
+                      continue
+                  name = entry.name
+                  if (name.startswith(('.github/', 'kodi-dev-addons/')) or
+                      name in ('.gitignore', '.gitattributes')):
+                      continue
+                  payload = archive.extractfile(entry).read()
+                  if name.endswith(('.xml', '.json', '.xmltemplate', '.xsp',
+                                    '.py', '.md', '.txt', '.yml', '.yaml')):
+                      txt = payload.decode('utf-8')
+                      txt = txt.replace(SRC, LAB)
+                      if name == 'addon.xml':
+                          txt = txt.replace('name="Arctic Fuse 3"',
+                              'name="Arctic Fuse 3 Premium LAB"', 1)
+                          txt = txt.replace('version="3.4.2"',
+                              'version="' + VERSION + '"', 1)
+                          txt = txt.replace('provider-name="jurialmunkey"',
+                              'provider-name="jurialmunkey / ntls2000"', 1)
+                          txt = txt.replace('</requires>',
+                              '    <import addon="' + SERVICE +
+                              '" version="0.4.8" />\n    </requires>', 1)
+                          txt = txt.replace(
+                              'addon="resource.images.arctic.splash" version="1.0.6"',
+                              'addon="resource.images.arctic.splash" version="1.0.0"',
+                              1)
+                      payload = txt.encode('utf-8')
+                  files[name] = payload
+
+          manifest = ET.fromstring(files['addon.xml'])
+          assert manifest.get('id') == LAB
+          assert manifest.get('version') == VERSION
+          assert manifest.get('name') == 'Arctic Fuse 3 Premium LAB'
+          assert any(x.get('addon') == SERVICE and x.get('version') == '0.4.8'
+                     for x in manifest.findall('./requires/import'))
+          hub = files['1080i/Includes_Hubs.xml'].decode('utf-8')
+          ET.fromstring(hub)
+          assert hub.count('<include content="Hub_Spotlight_Button_Circle">') == 2
+          assert hub.count('<control type="button" id="$PARAM[id]">') == 1
+          assert hub.count('<control type="group" id="$PARAM[groupid]">') == 1
+          assert '<control type="group" id="316">' in hub
+          assert '<width>435</width>' in hub
+          assert '<param name="card_width">410</param>' in hub
+          assert '<width>$PARAM[card_width]</width>' in hub
+          assert '<height>72</height>' in hub
+          assert '<onright>312</onright>' in hub
+          assert '<onclick>SetFocus(311)</onclick>' in hub
+          assert '<onclick>SetFocus(312)</onclick>' in hub
+          assert '<ondown>$VAR[Hub_Action_Widgets]</ondown>' in hub
+          assert '<nested />' in hub
+          assert 'Skin.HasSetting(Spotlight.PremiumButtons)' not in hub
+          for name in ('1080i/Includes_Home.xml',
+                       '1080i/Includes_SkinSettings.xml',
+                       '1080i/Includes_Textures.xml'):
+              ET.fromstring(files[name])
+
+          assert len(files) > 3500 and 'media/Textures.xbt' in files
+          with ZipFile(out, 'w', compression=ZIP_DEFLATED,
+                       compresslevel=6, allowZip64=True) as target:
+              for name, data in sorted(files.items()):
+                  target.writestr(f'{LAB}/{name}', data)
+          with ZipFile(out) as test:
+              assert test.testzip() is None
+              assert test.read(f'{LAB}/addon.xml') == files['addon.xml']
+          print('ISOLATED PREMIUM LAB: original IDs 311/312 and group 316 preserved')
+          print('ONLY difference from validated source is Includes_Hubs.xml')
+          print('Frozen Emby source 0.4.8 unchanged')
+          print('LAB ZIP:', out)
+          print('FILES:', len(files))
+          PY
+          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip
+          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip
+      - name: Release pre-verified standalone lab ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='arctic-fuse-3-premium-lab-3.4.2.25'
+          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip'
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --prerelease --target lab-premium-spotlight \
+              --title 'Arctic Fuse 3 Premium LAB 3.4.2.25 (isolated experiment)' \
+              --notes 'UNVALIDATED EXPERIMENT. Parallel-install skin ID skin.arctic.fuse.3.premium.lab; does not replace stable DEV 3.4.2.24. Native 311/312 buttons and 316 group remain in original hierarchy. Cosmetic Premium surfaces only. Emby trailer service 0.4.8 unchanged. Switch back to Arctic Fuse 3 DEV in Kodi if any navigation anomaly.'
+          fi
+          gh release upload "$tag" "$zip" --clobber
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --output /tmp/lab-public-check.zip \
+            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.25.zip"
+          cmp "$zip" /tmp/lab-public-check.zip
+          unzip -tq /tmp/lab-public-check.zip
+          echo 'PREMIUM LAB release verified byte-for-byte after public download'
