@@ -6,6 +6,33 @@
         <value>main_fg_100</value>
     </variable>
 
+    <!-- Rendering-only values; focusable IDs and onclick actions remain
+         identical for Standard and Premium, even when the option is toggled. -->
+    <variable name="AF3DEV_SpotlightPlayGroupWidth">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">272</value>
+        <value>240</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightPlayTextLeft">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-40</value>
+        <value>20</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightPlayTextColor">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">FF202020</value>
+        <value>main_fg_90</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightInfoIconLeft">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">20</value>
+        <value>80</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightInfoTextLeft">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">45</value>
+        <value>20</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightInfoButtonWidth">
+        <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">240</value>
+        <value>auto</value>
+    </variable>
+
     <variable name="AF3DEV_SpotlightButtonStyle">
         <value condition="Skin.HasSetting(Spotlight.PremiumButtons)">Premium</value>
         <value>Standard</value>
