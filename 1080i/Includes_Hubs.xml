@@ -377,7 +377,10 @@
         <param name="left">0</param>
         <param name="width">auto</param>
         <param name="textleft">20</param>
-        <param name="premium_width">272</param>
+        <param name="button_height">80</param>
+        <param name="text_offset">0</param>
+        <param name="aligny">top</param>
+        <param name="premium_width">392</param>
         <param name="premium_background">EEFFFFFF</param>
         <param name="premium_icon_color">FF202020</param>
         <param name="premium_text_color">main_fg_90</param>
@@ -445,17 +448,21 @@
             </control>
             <control type="button" id="$PARAM[id]">
                 <width max="$PARAM[max]">$PARAM[width]</width>
-                <height>80</height>
+                <height>$PARAM[button_height]</height>
                 <centertop>50%</centertop>
-                <textoffsetx>0</textoffsetx>
+                <align>left</align>
+                <aligny>$PARAM[aligny]</aligny>
+                <textoffsetx>$PARAM[text_offset]</textoffsetx>
                 <include condition="!Skin.HasSetting(Spotlight.PremiumButtons)">Texture_Highlight_Underline_H</include>
                 <include condition="Skin.HasSetting(Spotlight.PremiumButtons)">Texture_Highlight_Spotlight_Premium_Transparent</include>
                 <font>font_main_bold</font>
                 <textcolor>$PARAM[premium_text_color]</textcolor>
                 <focusedcolor>$VAR[AF3DEV_SpotlightFocusedLabelColor]</focusedcolor>
                 <label>$PARAM[label]</label>
-                <nested />
+                <!-- Place defaults BEFORE nested so original call-site left
+                     (140 in Standard) wins; Premium passes its own geometry. -->
                 <left>$PARAM[textleft]</left>
+                <nested />
             </control>
         </definition>
     </include>
@@ -526,6 +533,7 @@
 
                     <control type="group" id="316">
                         <width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>
+                        <height>160</height>
                         <orientation>horizontal</orientation>
 
                         <include content="Hub_Spotlight_Button_Circle">
@@ -533,9 +541,13 @@
                             <param name="groupid">321</param>
                             <param name="label">$VAR[Label_FullscreenWidget_PlayButton]</param>
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
-                            <param name="max">160</param>
+                            <param name="max">$VAR[AF3DEV_SpotlightPlayButtonMax]</param>
+                            <param name="width">$VAR[AF3DEV_SpotlightPlayButtonWidth]</param>
                             <param name="textleft">$VAR[AF3DEV_SpotlightPlayTextLeft]</param>
-                            <param name="premium_width">272</param>
+                            <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
+                            <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
+                            <param name="aligny">$VAR[AF3DEV_SpotlightTextAlignY]</param>
+                            <param name="premium_width">392</param>
                             <param name="premium_background">EEFFFFFF</param>
                             <param name="premium_icon_color">FF202020</param>
                             <param name="premium_text_color">$VAR[AF3DEV_SpotlightPlayTextColor]</param>
@@ -549,7 +561,7 @@
                             </include>
                             <include>Hub_Spotlight_OnLeft</include>
                             <onright>312</onright>
-                            <left>140</left>
+                            <left>$VAR[AF3DEV_SpotlightPlayButtonLeft]</left>
                             <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">SetProperty(Bumper.Direction,Up,Home)</onup>
                             <onup condition="Skin.HasSetting(HomeSwitcher.Vertical)">ActivateWindow(1180)</onup>
                             <onup condition="!Skin.HasSetting(HomeSwitcher.Vertical)">300</onup>
@@ -567,7 +579,10 @@
                         <param name="left">$VAR[AF3DEV_SpotlightInfoIconLeft]</param>
                         <param name="textleft">$VAR[AF3DEV_SpotlightInfoTextLeft]</param>
                         <param name="width">$VAR[AF3DEV_SpotlightInfoButtonWidth]</param>
-                        <param name="premium_width">306</param>
+                        <param name="button_height">$VAR[AF3DEV_SpotlightButtonHeight]</param>
+                        <param name="text_offset">$VAR[AF3DEV_SpotlightTextOffset]</param>
+                        <param name="aligny">$VAR[AF3DEV_SpotlightTextAlignY]</param>
+                        <param name="premium_width">302</param>
                         <param name="premium_background">990A0A0A</param>
                         <param name="premium_icon_color">main_fg_100</param>
                         <onclick>SetFocus(301)</onclick>
