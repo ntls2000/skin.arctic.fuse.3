@@ -34,7 +34,7 @@ jobs:
 
           SRC = 'skin.arctic.fuse.3'
           LAB = 'skin.arctic.fuse.3.premium.lab'
-          VERSION = '3.4.2.27'
+          VERSION = '3.4.2.28'
           SERVICE = 'service.skin.arctic.fuse.3.dev.trailers'
           out = Path('/tmp') / f'{LAB}-{VERSION}.zip'
 
@@ -107,9 +107,13 @@ jobs:
           assert '<param name="card_bg">EEFFFFFF</param>' not in hub
           assert '<visible>!Control.HasFocus($PARAM[id])</visible>' in hub
           assert '<visible>Control.HasFocus($PARAM[id])</visible>' in hub
-          assert '<texture border="18" colordiffuse="CCFFFFFF">common/box.png</texture>' in hub, "Unfocused thin outline missing"
-          assert '<left>2</left>\n                        <width>406</width>\n                        <height>68</height>' in hub, "Inset 2px outline fill missing"
-          assert '<texture border="16" colordiffuse="$PARAM[card_bg]">common/box.png</texture>' in hub
+          # True transparent border: four 2px strokes, NOT a white backing image
+          # with a translucent dark inset that still lets white bleed through.
+          assert hub.count('<texture colordiffuse="CCFFFFFF">common/main.png</texture>') == 4, "Top/bottom/left/right outlines missing"
+          assert '<top>70</top>' in hub and '<left>408</left>' in hub
+          assert '<texture border="18" colordiffuse="$PARAM[card_bg]">common/box.png</texture>' in hub
+          assert '<texture border="18" colordiffuse="CCFFFFFF">common/box.png</texture>' not in hub, "Opaque white inside an inactive card"
+          assert '<texture border="16" colordiffuse="$PARAM[card_bg]">common/box.png</texture>' not in hub
           assert '<texture border="18" colordiffuse="FFFFFFFF">common/box.png</texture>' in hub, "Focused full white fill missing"
           assert '<texture background="true" colordiffuse="FF181818">$PARAM[image]</texture>' in hub
           assert '<focusedcolor>FF181818</focusedcolor>' in hub
@@ -140,25 +144,25 @@ jobs:
           print('LAB ZIP:', out)
           print('FILES:', len(files))
           PY
-          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip
-          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip
+          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip
+          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip
       - name: Release pre-verified standalone lab ZIP
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-premium-lab-3.4.2.27'
-          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip'
+          tag='arctic-fuse-3-premium-lab-3.4.2.28'
+          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target lab-premium-spotlight \
-              --title 'Arctic Fuse 3 Premium LAB 3.4.2.27 (isolated experiment)' \
-              --notes 'UNVALIDATED UI EXPERIMENT. Premium LAB 3.4.2.27: both Play and Information buttons have a visible white border with translucent dark interior when unfocused; the button with focus alone fills white with black icon/text. No layout, button ID 311/312, action, group 316, Emby trailer service 0.4.8 or stable skin 3.4.2.24 changes. Can switch back to Arctic Fuse 3 DEV at any time.'
+              --title 'Arctic Fuse 3 Premium LAB 3.4.2.28 (isolated experiment)' \
+              --notes 'UNVALIDATED UI EXPERIMENT. Premium LAB 3.4.2.28: Play and Information have a real 2px rectangular white outline formed by 4 independent strokes and a translucent dark centre. Only the focused button fills white; text and icon turn black. No button dimensions, navigation IDs 311/312, group 316, click actions, Emby trailer service 0.4.8 or stable DEV 3.4.2.24 changes. Both skins can be installed side by side.'
           fi
           gh release upload "$tag" "$zip" --clobber
           curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-public-check.zip \
-            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip"
+            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip"
           cmp "$zip" /tmp/lab-public-check.zip
           unzip -tq /tmp/lab-public-check.zip
           echo 'PREMIUM LAB release verified byte-for-byte after public download' 
@@ -175,7 +179,7 @@ jobs:
 
           root_dir = Path('kodi-repository')
           lab_id = 'skin.arctic.fuse.3.premium.lab'
-          lab_version = '3.4.2.27'
+          lab_version = '3.4.2.28'
           lab_file = f'{lab_id}-{lab_version}.zip'
           src_zip = Path('/tmp') / lab_file
           lab_dir = root_dir / lab_id
@@ -227,7 +231,7 @@ jobs:
               'Expected stable DEV, trailer service and previous LAB', existing_ids)
           previous_lab = catalog_root.find(f"./addon[@id='{lab_id}']")
           assert previous_lab is not None
-          assert previous_lab.get('version') in ('3.4.2.26', lab_version)
+          assert previous_lab.get('version') in ('3.4.2.27', lab_version)
           catalog_root.remove(previous_lab)
           catalog_root.append(lab_manifest)
           ids = [child.get('id') for child in catalog_root]
@@ -248,14 +252,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.premium.lab/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           git diff --cached --quiet && { echo "Lab catalog was not changed"; exit 1; }
-          git commit -m 'repo(kodi): update Premium LAB 3.4.2.27 border and white-fill focus; preserve stable DEV'
+          git commit -m 'repo(kodi): publish Premium LAB 3.4.2.28 real outline; preserve stable DEV'
           git push origin HEAD:kodi-repo
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip > /tmp/git-stored-lab.zip
-          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip > /tmp/git-stored-lab.zip
+          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip
           unzip -tq /tmp/git-stored-lab.zip
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-repository-download.zip \
-            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.27.zip
+            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.28.zip
           cmp /tmp/git-stored-lab.zip /tmp/lab-repository-download.zip
           unzip -tq /tmp/lab-repository-download.zip
           git show HEAD:kodi-repository/addons.xml | grep 'skin.arctic.fuse.3.premium.lab'
