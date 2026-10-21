@@ -377,7 +377,7 @@
         <param name="left">0</param>
         <param name="width">auto</param>
         <param name="card_width">410</param>
-        <param name="card_bg">B80A0A0A</param>
+        <param name="card_bg">330A0A0A</param>
         <param name="card_icon">FFFFFFFF</param>
         <param name="card_text">FFFFFFFF</param>
         <definition>
@@ -391,11 +391,20 @@
                 <centertop>50%</centertop>
                 <control type="group">
                     <visible>!Control.HasFocus($PARAM[id])</visible>
+                    <!-- Unfocused: permanent white outline and translucent
+                         centre; original focusable control stays untouched. -->
                     <control type="image">
                         <width>$PARAM[card_width]</width>
                         <height>72</height>
                         <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="$PARAM[card_bg]">common/box.png</texture>
+                        <texture border="18" colordiffuse="CCFFFFFF">common/box.png</texture>
+                    </control>
+                    <control type="image">
+                        <left>2</left>
+                        <width>406</width>
+                        <height>68</height>
+                        <centertop>50%</centertop>
+                        <texture border="16" colordiffuse="$PARAM[card_bg]">common/box.png</texture>
                     </control>
                     <control type="image">
                         <left>24</left>
@@ -411,14 +420,14 @@
                         <width>$PARAM[card_width]</width>
                         <height>72</height>
                         <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="$VAR[ColorHighlight]">common/box.png</texture>
+                        <texture border="18" colordiffuse="FFFFFFFF">common/box.png</texture>
                     </control>
                     <control type="image">
                         <left>24</left>
                         <width>32</width>
                         <height>32</height>
                         <centertop>50%</centertop>
-                        <texture background="true" colordiffuse="$VAR[ColorSelected]">$PARAM[image]</texture>
+                        <texture background="true" colordiffuse="FF181818">$PARAM[image]</texture>
                     </control>
                 </control>
             </control>
@@ -434,7 +443,7 @@
                 <texturenofocus />
                 <font>font_main_bold</font>
                 <textcolor>$PARAM[card_text]</textcolor>
-                <focusedcolor>$VAR[ColorSelected]</focusedcolor>
+                <focusedcolor>FF181818</focusedcolor>
                 <label>$PARAM[label]</label>
                 <nested />
                 <left>20</left>
@@ -517,7 +526,7 @@
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">260</param>
                             <param name="card_width">410</param>
-                            <param name="card_bg">B80A0A0A</param>
+                            <param name="card_bg">330A0A0A</param>
                             <param name="card_icon">FFFFFFFF</param>
                             <param name="card_text">FFFFFFFF</param>
                             <onclick>SetFocus(301)</onclick>
@@ -548,7 +557,7 @@
                         <param name="left">0</param>
                         <param name="max">310</param>
                         <param name="card_width">410</param>
-                        <param name="card_bg">B80A0A0A</param>
+                        <param name="card_bg">330A0A0A</param>
                         <param name="card_icon">FFFFFFFF</param>
                         <param name="card_text">FFFFFFFF</param>
                         <onclick>SetFocus(301)</onclick>
