@@ -391,42 +391,19 @@
                 <centertop>50%</centertop>
                 <control type="group">
                     <visible>!Control.HasFocus($PARAM[id])</visible>
-                    <!-- Transparent inactive card. The optional dark tint is
-                         painted FIRST; four actual thin strokes form the border,
-                         so its interior never inherits an opaque white fill. -->
+                    <!-- Thin, ANTIALIASED rounded border. Transparent centre:
+                         no four-stroke square corners or white underlay. -->
                     <control type="image">
                         <width>$PARAM[card_width]</width>
-                        <height>72</height>
+                        <height>84</height>
                         <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="$PARAM[card_bg]">common/box.png</texture>
+                        <texture border="22" colordiffuse="$PARAM[card_bg]">common/spotlight-fill.png</texture>
                     </control>
-                    <control type="group">
+                    <control type="image">
                         <width>$PARAM[card_width]</width>
-                        <height>72</height>
+                        <height>84</height>
                         <centertop>50%</centertop>
-                        <!-- Top, bottom, left and right: 2px outline. -->
-                        <control type="image">
-                            <width>$PARAM[card_width]</width>
-                            <height>2</height>
-                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
-                        </control>
-                        <control type="image">
-                            <top>70</top>
-                            <width>$PARAM[card_width]</width>
-                            <height>2</height>
-                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
-                        </control>
-                        <control type="image">
-                            <width>2</width>
-                            <height>72</height>
-                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
-                        </control>
-                        <control type="image">
-                            <left>408</left>
-                            <width>2</width>
-                            <height>72</height>
-                            <texture colordiffuse="CCFFFFFF">common/main.png</texture>
-                        </control>
+                        <texture border="22" colordiffuse="DDFFFFFF">common/spotlight-outline.png</texture>
                     </control>
                     <control type="image">
                         <left>24</left>
@@ -440,9 +417,9 @@
                     <visible>Control.HasFocus($PARAM[id])</visible>
                     <control type="image">
                         <width>$PARAM[card_width]</width>
-                        <height>72</height>
+                        <height>84</height>
                         <centertop>50%</centertop>
-                        <texture border="18" colordiffuse="FFFFFFFF">common/box.png</texture>
+                        <texture border="22" colordiffuse="FFFFFFFF">common/spotlight-fill.png</texture>
                     </control>
                     <control type="image">
                         <left>24</left>
@@ -455,7 +432,7 @@
             </control>
             <control type="button" id="$PARAM[id]">
                 <width max="$PARAM[max]">$PARAM[width]</width>
-                <height>80</height>
+                <height>84</height>
                 <centertop>50%</centertop>
                 <textoffsetx>0</textoffsetx>
                 <aligny>center</aligny>
@@ -544,7 +521,7 @@
                         <include content="Hub_Spotlight_Button_Circle">
                             <param name="id">311</param>
                             <param name="groupid">321</param>
-                            <param name="label">$VAR[Label_FullscreenWidget_PlayButton]</param>
+                            <param name="label">Lecture</param>
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">260</param>
                             <param name="card_width">410</param>
@@ -572,7 +549,7 @@
                     <include content="Hub_Spotlight_Button_Circle">
                         <param name="id">312</param>
                         <param name="groupid">322</param>
-                        <param name="label">$VAR[Label_FullscreenWidget_InfoButton]</param>
+                        <param name="label">Informations</param>
                         <param name="image">$VAR[Image_FullscreenWidget_InfoButton]</param>
                         <param name="size">60</param>
                         <param name="bordersize">0</param>
