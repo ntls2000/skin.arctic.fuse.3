@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.20"
+          DEV_VER = "3.4.2.21"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -92,6 +92,22 @@ jobs:
           assert '<visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>' not in stable.split('<control type="group" id="$PARAM[groupid]">',1)[1].split('<control type="group">',1)[0], "Do not hide the button's parent"
           assert '<nested />' in stable
           assert '<left>$PARAM[textleft]</left>' in stable
+          # 3.4.2.21 visual regression: keep Standard native offsets and
+          # make the art surface and label share a 72px-high Premium row.
+          assert stable.index('<left>$PARAM[textleft]</left>') < stable.index('<nested />'), "Nested original 140px left must override default in Standard"
+          assert '<height>$PARAM[button_height]</height>' in stable
+          assert '<textoffsetx>$PARAM[text_offset]</textoffsetx>' in stable
+          assert '<aligny>$PARAM[aligny]</aligny>' in stable
+          assert '<param name="width">$VAR[AF3DEV_SpotlightPlayButtonWidth]</param>' in hub_xml
+          assert '<param name="max">$VAR[AF3DEV_SpotlightPlayButtonMax]</param>' in hub_xml
+          assert '<left>$VAR[AF3DEV_SpotlightPlayButtonLeft]</left>' in hub_xml
+          assert '<param name="premium_width">392</param>' in hub_xml
+          assert '<param name="premium_width">302</param>' in hub_xml
+          assert '<width>$VAR[AF3DEV_SpotlightPlayGroupWidth]</width>\n                        <height>160</height>' in hub_xml
+          assert '<value condition="Skin.HasSetting(Spotlight.PremiumButtons)">-60</value>' in home_xml, "Info label must align with its background after 60px icon item"
+          for field in ('PlayButtonLeft', 'PlayButtonWidth', 'PlayButtonMax',
+                        'ButtonHeight', 'TextOffset', 'TextAlignY'):
+              assert 'name="AF3DEV_Spotlight' + field + '"' in home_xml
           assert '<visible>Skin.HasSetting(Spotlight.PremiumButtons)</visible>' in stable
           assert '<width>$PARAM[premium_width]</width>' in stable
           assert '<height>72</height>' in stable
@@ -401,10 +417,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.20"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.21"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.20.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.21.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
