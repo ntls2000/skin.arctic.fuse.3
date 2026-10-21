@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.14"
+          DEV_VER = "3.4.2.15"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ jobs:
                       txt = txt.replace('name="Arctic Fuse 3"', 'name="Arctic Fuse 3 DEV (Original)"', 1)
                       txt = txt.replace('version="3.4.2"', 'version="' + DEV_VER + '"', 1)
                       txt = txt.replace('provider-name="jurialmunkey"', 'provider-name="jurialmunkey / ntls2000"', 1)
-                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.4" />'
+                      service_import = '<import addon="service.skin.arctic.fuse.3.dev.trailers" version="0.4.5" />'
                       txt = txt.replace('</requires>', '    ' + service_import + '\n    </requires>', 1)
                       txt = txt.replace('addon="resource.images.arctic.splash" version="1.0.6"', 'addon="resource.images.arctic.splash" version="1.0.0"', 1)
                   payload = txt.encode("utf-8")
@@ -75,366 +75,158 @@ jobs:
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
           assert "shortcuts/skinvariables-generator.json" in entries
-          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.4" and x.get("optional") is None for x in manifest.findall("./requires/import"))
+          assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.5" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
           source_service = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers"
           service_xml = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/addon.xml"])
           service_py = subprocess.check_output(["git", "show", f"{SOURCE_REF}:{source_service}/service.py"])
           compile(service_py, "service.py", "exec")
-          # Native widget player handoff regression tests with mocked Kodi objects.
-          import sys, types, time
+          # Emby-only regression suite. Kodi's service must NEVER invoke
+          # plugin.video.youtube, even when Emby stores YouTube remote trailers.
+          import sys, types, tempfile, sqlite3, os, json
           xbmc_mock = types.ModuleType("xbmc")
-          xbmc_mock.LOGINFO = 1
-          xbmc_mock.LOGWARNING = 2
-          xbmc_mock.LOGERROR = 3
-          xbmc_mock.log = lambda *args, **kwargs: None
-          state = {"enabled": True, "home": True, "active_window": 10000,
-                   "widgets_focused": False, "fullscreen": False,
-                   "num_items": "2", "position": "1", "title": "First movie",
-                   "dbtype": "movie", "tmdb_id": "", "list_trailer": "", "autoscroll": "10s"}
-          def get_cond(condition):
-              if condition.startswith("Skin.HasSetting(Spotlight.AutoTrailer)"):
-                  return state["enabled"]
-              if condition.startswith("Window.IsActive(Home)"):
+          xbmc_mock.LOGINFO, xbmc_mock.LOGWARNING, xbmc_mock.LOGERROR = 1, 2, 3
+          xbmc_mock.log = lambda *args, **kw: None
+          state = {
+              "active_window": 10000, "focus_widget": False, "num_items": "3",
+              "position": "1", "title": "Emby Film", "dbid": "123", "dbtype": "movie",
+              "list_trailer": "http://127.0.0.1:57342/dynamic/trailer/film.mp4",
+              "movie_trailer": "http://127.0.0.1:57342/dynamic/trailer/film.mp4",
+              "autoscroll": "30s"
+          }
+          def condition(expr):
+              if expr.startswith("Skin.HasSetting(Spotlight.AutoTrailer)"):
+                  return True
+              if expr.startswith("Window.IsActive(Home)"):
                   return state["active_window"] == 10000
-              for hub_id in (1101, 1102, 1103, 1104):
-                  if condition.startswith("Window.IsActive(" + str(hub_id) + ")"):
+              for hub_id in (1101,1102,1103,1104):
+                  if expr.startswith("Window.IsActive(" + str(hub_id) + ")"):
                       return state["active_window"] == hub_id
-              if condition.startswith("Window.IsVisible(DialogVideoInfo.xml)"):
-                  return False
-              if condition.startswith("ControlGroup(500).HasFocus()"):
-                  return state["widgets_focused"]
-              if condition.startswith("Window.IsActive(fullscreenvideo)"):
-                  return state["fullscreen"]
+              if expr.startswith("ControlGroup(500).HasFocus()"):
+                  return state["focus_widget"]
               return False
-          xbmc_mock.getCondVisibility = get_cond
+          xbmc_mock.getCondVisibility = condition
           xbmc_mock.getInfoLabel = lambda expr: {
               "Container(301).NumItems": state["num_items"],
               "Container(301).ListItem.Title": state["title"],
-              "Container(301).ListItem.DBID": "123",
+              "Container(301).ListItem.DBID": state["dbid"],
               "Container(301).ListItem.DBType": state["dbtype"],
-              "Container(301).ListItem.UniqueID(tmdb)": state["tmdb_id"],
               "Container(301).ListItem.Trailer": state["list_trailer"],
               "Container(301).CurrentItem": state["position"],
-              "Container(301).ListItem.FileNameAndPath": "videodb://movies/titles/123/",
+              "Container(301).ListItem.FileNameAndPath": "videodb://library/item",
               "Skin.String(AutoScrollTime)": state["autoscroll"],
           }.get(expr, "")
-          xbmc_mock.executeJSONRPC = lambda request: '{"result":{"moviedetails":{"trailer":"plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"}}}'
-          class MockPlayer:
+          xbmc_mock.executeJSONRPC = lambda req: json.dumps({
+              "result": {"moviedetails": {"trailer": state["movie_trailer"]}}})
+          class Player:
               def __init__(self):
                   self.playing = False
-                  self.url = ""
-                  self.stopped = 0
-                  self.defer = False
-              def isPlaying(self):
-                  return self.playing
-              def isPlayingVideo(self):
-                  return self.playing
-              def getPlayingFile(self):
-                  return self.url
+                  self.file = ""
+                  self.stops = 0
+                  self.plays = []
+              def isPlaying(self): return self.playing
+              def isPlayingVideo(self): return self.playing
+              def getPlayingFile(self): return self.file
               def play(self, uri, windowed=False):
-                  assert windowed
-                  self.url = uri
-                  self.playing = not self.defer
-                  self.defer = False
-              def begin_deferred(self):
+                  assert windowed and "youtube" not in uri.lower(), uri
+                  self.file = uri
+                  self.plays.append(uri)
                   self.playing = True
               def stop(self):
-                  self.stopped += 1
+                  self.stops += 1
                   self.playing = False
-                  self.url = ""
-          class MockWindow:
-              def __init__(self):
-                  self.props = {"TMDbHelper.WidgetContainer": "301"}
-              def getProperty(self, key):
-                  return self.props.get(key, "")
-              def setProperty(self, key, value):
-                  self.props[key] = value
-          class MockMonitor:
-              pass
-          player = MockPlayer()
-          native_stop_calls = []
-          slide_move_calls = []
-          def native_action(command, wait=False):
+                  self.file = ""
+          class Win:
+              def __init__(self): self.props = {"TMDbHelper.WidgetContainer": "301"}
+              def getProperty(self, name): return self.props.get(name,"")
+              def setProperty(self, name, value): self.props[name]=value
+          player = Player()
+          action_log = []
+          def builtin(action, wait=False):
               assert wait is False
-              if command == "PlayerControl(Stop)":
-                  native_stop_calls.append(command)
-                  if not getattr(player, "stop_deferred", False):
-                      player.stop()
-              elif command == "Control.Move(301,1)":
-                  slide_move_calls.append(command)
-              else:
-                  raise AssertionError("Unexpected Kodi action: " + command)
-          xbmc_mock.executebuiltin = native_action
-          home = MockWindow()
-          gui_mock = types.ModuleType("xbmcgui")
+              action_log.append(action)
+              if action == "PlayerControl(Stop)": player.stop()
+              else: assert action == "Control.Move(301,1)",action
+          xbmc_mock.executebuiltin = builtin
           xbmc_mock.Player = lambda: player
-          xbmc_mock.Monitor = MockMonitor
-          windows = {10000: home}
-          windows.update({hub: MockWindow() for hub in (1101, 1102, 1103, 1104)})
-          gui_mock.Window = lambda window_id: windows[window_id]
-          old_modules = {name: sys.modules.get(name) for name in ("xbmc", "xbmcgui")}
-          sys.modules["xbmc"] = xbmc_mock
-          sys.modules["xbmcgui"] = gui_mock
+          xbmc_mock.Monitor = lambda: None
+          gui_mock = types.ModuleType("xbmcgui")
+          windows = {w:Win() for w in (10000,1101,1102,1103,1104)}
+          gui_mock.Window = lambda number: windows[number]
+          fs_mock = types.ModuleType("xbmcvfs")
+          old_modules = {k:sys.modules.get(k) for k in ("xbmc","xbmcgui","xbmcvfs")}
+          sys.modules.update({"xbmc":xbmc_mock,"xbmcgui":gui_mock,"xbmcvfs":fs_mock})
           try:
-              namespace = {"__name__": "test_import"}
-              exec(compile(service_py, "service.py", "exec"), namespace)
-              assert namespace["_normalize_trailer"]("https://www.youtube.com/watch?v=ABCDEFGHIJK") == "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"
-              assert namespace["_normalize_trailer"]("javascript:bad") == ""
-              assert namespace["_movie_db_trailer"]("123", "movie") == "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"
-              item, mode = namespace["_spotlight"](home)
-              assert mode == "spotlight" and item["dbid"] == "123"
-              service = namespace["SpotlightService"]()
-              service._tick()
-              assert not player.playing
-              service.changed_at -= 2.0
-              service._tick()
-              assert player.playing, "Trailer was not launched for Spotlight"
-              service._tick()
-              assert service.owned, "Trailer ownership wasn't confirmed"
-              # YouTube often replaces plugin:// URI with a resolved HTTP stream.
-              # Its preview must still stop when moving to native widgets.
-              player.url = "https://stream.example.net/resolved-video"
-              service._tick()
-              assert service.owned, "Resolver URL change wrongly released ownership"
-              home.setProperty("TMDbHelper.WidgetContainer", "501")
-              service._tick()
-              assert player.stopped == 1 and not player.playing, "Widget focus did not stop trailer"
-              assert not service.owned and not service.pending
-              assert namespace["_spotlight"](home)[1] == "native_widget"
-              service.stop_queued_at -= 1.0
-              # Re-entry to Spotlight and next item automatic cutoff.
-              home.setProperty("TMDbHelper.WidgetContainer", "301")
-              service._tick()
-              service.changed_at -= 2.0
-              service._tick()
-              service._tick()
-              assert player.playing
-              service.changed_at -= 9.0
-              service._tick()
-              assert player.stopped == 2 and not player.playing, "Autoscroll cutoff missed"
-              service.stop_queued_at -= 1.0
-              # Emby HTTP streams may begin after Kodi rebuilds the Spotlight
-              # list: old service lost ownership and played forever.
-              state["position"] = "2"
-              state["title"] = "Second film"
-              service._tick()
-              service.changed_at -= 2.0
-              player.defer = True
-              service._tick()
-              assert service.pending and not player.playing
-              state["num_items"] = "0"
-              service._tick()
-              assert service.pending, "Transient empty Spotlight lost pending ownership"
-              player.begin_deferred()
-              service._tick()
-              assert service.pending, "Loading state dropped pending Emby playback"
-              state["num_items"] = "2"
-              service._tick()
-              assert service.owned, "Delayed player startup not captured on list recovery"
-              service.changed_at -= 7.0
-              service._tick()
-              assert player.stopped == 3 and not player.playing, "Delayed trailer missed 2-second stop"
-              service.stop_queued_at -= 1.0
-              state["position"] = "3"
-              state["title"] = "Third film"
-              service._tick()
-              service.changed_at -= 2.0
-              service._tick()
-              service._tick()
-              assert player.playing and service.owned, "Trailer for third film not launched"
-              service.changed_at -= 7.0
-              service._tick()
-              assert player.stopped == 4 and not player.playing, "Third trailer was not stopped"
-              service.stop_queued_at -= 1.0
-              # Next title with no trailer must never play the previous one.
-              state["position"] = "4"
-              state["title"] = "No trailer movie"
-              state["num_items"] = "2"
-              service._tick()
-              assert not player.playing
-              assert len(native_stop_calls) == 4, "Exactly one native Stop per trailer"
-              assert not hasattr(service, "cache"), "Old cache implementation must be removed"
-
-              # A queued Kodi Stop may not execute until a later GUI cycle.
-              state["position"] = "5"
-              state["title"] = "Another trailer"
-              service._tick()
-              service.changed_at -= 2
-              service._tick()
-              service._tick()
-              assert player.playing
-              player.stop_deferred = True
-              service.changed_at -= 7
-              service._tick()
-              assert service.stop_queued and player.playing, "Stop must be queued, not blocking"
-              state["position"] = "6"
-              service._tick()
-              assert service.stop_queued, "Do not launch while Stop is queued"
-              player.stop_deferred = False
-              player.stop()
-              service.stop_queued_at -= 1.0
-              service._tick()
-              assert not service.stop_queued, "Unlock after Kodi stops"
-
-              # Every autoscroll duration maps 1:1 to native Defs_AutoScroll.
-              for label, interval in (("5s", 5), ("8s", 8), ("10s", 10),
-                                      ("12s", 12), ("15s", 15), ("20s", 20),
-                                      ("30s", 30), ("60s", 60), ("10m", 600)):
-                  state["autoscroll"] = label
-                  assert namespace["_interval"]() == interval, label
-                  assert namespace["_preview_cutoff"]() == interval - 2, label
-              state["autoscroll"] = ""
-              assert namespace["_interval"]() == 12, "Empty setting must use 12s skin default"
-
-              # Regression: old 15-second cap stopped 30s slides too early.
-              state["autoscroll"] = "30s"
-              state["position"] = "7"
-              state["title"] = "Long slide"
-              service._tick()
-              service.changed_at -= 2.0
-              service._tick()
-              service._tick()
-              assert player.playing and service.owned, "30s preview didn't start"
-              stop_count = player.stopped
-              service.changed_at -= 14.0
-              service._tick()
-              assert player.playing and player.stopped == stop_count, "Stopped 30s trailer at only 16 seconds"
-              service.changed_at -= 12.1
-              service._tick()
-              assert player.stopped == stop_count + 1 and not player.playing, "30s slide must stop at 28s"
-              move_before = len(slide_move_calls)
-              assert not service.slide_advance_requested
-              service.changed_at -= 2.1
-              service._tick()
-              assert len(slide_move_calls) == move_before + 1, "30s slide did not advance at 30 seconds"
-              assert service.slide_advance_requested, "Slide advance not marked as sent"
-              service._tick()
-              assert len(slide_move_calls) == move_before + 1, "Duplicate slide move must be prevented"
-              state["position"] = "8"
-              state["title"] = "Next movie"
-              service._tick()
-              assert not service.slide_advance_requested, "Slide clock must reset for next title"
-              assert service.changed_at > 0
-
-              # Native auto-scroll must be gated ONLY for the preview-enabled Home.
-              hub_xml = entries["1080i/Includes_Hubs.xml"].decode("utf-8")
-              assert "Control.Move(301,1)" in service_py.decode("utf-8")
-              assert "[!ControlGroup(310).HasFocus() | System.IdleTime(3)] + !Skin.HasSetting(Spotlight.AutoTrailer)" in hub_xml
-              print("Spotlight synchronized tests PASSED: Stop at 28s, move at 30s, exactly once")
-
-              # Changing the skin setting must be reflected without restart.
-              state["autoscroll"] = "60s"
-              assert namespace["_preview_cutoff"]() == 58
-              state["autoscroll"] = "10s"
-              assert namespace["_preview_cutoff"]() == 8
-              print("AutoScrollTime tests PASSED: all nine intervals and real 30-second stop")
-
-              # Both the default and the new Premium Spotlight button styles
-              # must use the same control IDs / click actions.
-              assert "<label>Style des boutons du Spotlight</label>" in setting_source
-              assert "Skin.ToggleSetting(Spotlight.PremiumButtons)" in setting_source
-              assert 'Skin.HasSetting(Spotlight.PremiumButtons)' in hub_xml
-              assert 'Texture_Highlight_Spotlight_Premium' in hub_xml
-              assert b'common/box.png' in entries["1080i/Includes_Textures.xml"]
-              assert b'AF3DEV_SpotlightButtonStyle' in entries["1080i/Includes_Home.xml"]
-              assert b'AF3DEV_SpotlightFocusedLabelColor' in entries["1080i/Includes_Home.xml"]
-              # There should be no secondary Premium icon panel floating away
-              # from the actual focused button.
-              assert hub_xml.count('<visible>!Skin.HasSetting(Spotlight.PremiumButtons)</visible>') >= 1
-              assert "The premium style preserves the original focusable button" not in hub_xml
-              ET.fromstring(entries["1080i/Includes_Hubs.xml"])
-
-              # Each custom Hub 1101-1104 is a separate Kodi window with its
-              # own Spotlight 301 and independent TMDbHelper metadata.
-              assert namespace["_active_window_id"]() == 10000
-              state["autoscroll"] = "10s"
-              for hub_id in (1101, 1102, 1103, 1104):
-                  state["active_window"] = hub_id
-                  state["position"] = "1"
-                  state["title"] = "Hub Spotlight " + str(hub_id)
-                  windows[hub_id].setProperty("TMDbHelper.WidgetContainer", "301")
+              with tempfile.TemporaryDirectory(prefix="kodi-emby-tv-") as dbdir:
+                  fs_mock.translatePath = lambda uri: dbdir
+                  for version, trailer in (
+                      (135, "http://127.0.0.1:57342/dynamic/trailer/old.mp4"),
+                      (136, "http://127.0.0.1:57342/dynamic/trailer/series.mp4")):
+                      conn = sqlite3.connect(os.path.join(dbdir, "MyVideos%d.db" % version))
+                      conn.execute("CREATE TABLE tvshow (idShow INTEGER PRIMARY KEY,c00 TEXT,c16 TEXT)")
+                      conn.execute("INSERT INTO tvshow VALUES (123,'Emby Serie',?)",(trailer,))
+                      conn.commit()
+                      conn.close()
+                  namespace = {"__name__":"kodi_mock"}
+                  exec(compile(service_py,"service.py","exec"),namespace)
+                  norm = namespace["_normalize_trailer"]
+                  assert norm("plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK") == ""
+                  assert norm("https://www.youtube.com/watch?v=ABCDEFGHIJK") == ""
+                  assert norm("https://youtu.be/ABCDEFGHIJK") == ""
+                  assert norm("plugin://plugin.video.themoviedb.helper/?q=trailer") == ""
+                  assert norm("http://127.0.0.1:57342/dynamic/trailer/series.mp4")
+                  assert namespace["_tvshow_db_trailer"]("123","tvshow") .endswith("/series.mp4")
+                  assert namespace["_tvshow_db_trailer"]("123","","Wrong Title") == ""
+                  assert namespace["_movie_db_trailer"]("123","tvshow") == ""
+                  assert "TMDbHelper.ListItem.Trailer" not in service_py.decode("utf-8")
+                  service = namespace["SpotlightService"]()
                   service._tick()
-                  assert service.active_window_id == hub_id, "Hub not selected"
-                  assert service.home is windows[hub_id], "Wrong hub metadata source"
-                  assert namespace["_active_window_id"]() == hub_id
-                  item, hub_state = namespace["_spotlight"](windows[hub_id])
-                  assert hub_state == "spotlight" and item["count"] == 2
-                  service.stop_queued_at -= 1.0
                   service.changed_at -= 2.0
                   service._tick()
+                  assert not player.playing, "Startup grace must suppress early preview"
+                  service.started_at -= 15.0
                   service._tick()
-                  assert player.playing and service.owned, "Trailer failed on hub " + str(hub_id)
-                  previous_stops = player.stopped
-                  service.changed_at -= 7.0
+                  assert player.playing and player.plays[-1].endswith("/film.mp4")
                   service._tick()
-                  assert player.stopped == previous_stops + 1, "Stop failed on hub " + str(hub_id)
+                  assert service.owned
+                  service.changed_at -= 26.2
+                  service._tick()
+                  assert not player.playing and player.stops == 1
+                  service.changed_at -= 2.1
+                  service._tick()
+                  assert "Control.Move(301,1)" in action_log
+                  # TV show preview reads Emby-synced tvshow.c16, not TMDb.
+                  service.stop_queued_at -= 2.0
+                  state.update({"active_window":1102, "title":"Emby Serie",
+                                "position":"2", "dbtype":"tvshow", "list_trailer":""})
+                  service._tick()
+                  assert service.trailer.endswith("/series.mp4")
+                  service.changed_at -= 2.0
+                  service._tick()
+                  assert player.playing and player.plays[-1].endswith("/series.mp4")
+                  service._tick()
+                  assert service.owned
+                  windows[1102].setProperty("TMDbHelper.WidgetContainer","501")
+                  service._tick()
+                  assert not player.playing, "Must stop on native widget focus"
                   service.stop_queued_at -= 1.0
-              # Leaving hubs returns to the Home window without inheriting
-              # the previous hub's trailer or its selection timer.
-              state["active_window"] = 10000
-              state["position"] = "9"
-              service._tick()
-              assert service.active_window_id == 10000
-              assert service.home is home
-              state["active_window"] = -1
-              service._tick()
-              assert service.active_window_id is None
-              assert namespace["_active_window_id"]() is None
-              print("Hub preview tests PASSED: custom windows 1101-1104, stop, switch, return Home")
-              
-              # TV shows cannot be resolved through the Kodi movie DB ID.
-              # TMDbHelper's classic monitor stores metadata on Window(Home),
-              # not the active custom-hub window. Verify delayed monitor info.
-              state["active_window"] = 1102
-              state["dbtype"] = "tvshow"
-              state["tmdb_id"] = ""
-              state["list_trailer"] = ""
-              state["position"] = "10"
-              state["title"] = "Example TV Show"
-              state["num_items"] = "2"
-              state["autoscroll"] = "30s"
-              home.setProperty("TMDbHelper.ListItem.Title", "Previous TV Show")
-              home.setProperty("TMDbHelper.ListItem.Trailer", "plugin://plugin.video.youtube/play/?video_id=ZYXWVUTSRQP")
-              home.setProperty("TMDbHelper.ListItem.Monitor.TMDb_ID", "")
-              service._tick()
-              assert not service.trailer, "Stale series trailer should not be reused"
-              item, mode = namespace["_spotlight"](windows[1102])
-              assert item["dbtype"] == "tvshow" and mode == "spotlight"
-              assert namespace["_movie_db_trailer"]("123", "tvshow") == ""
-              home.setProperty("TMDbHelper.ListItem.Title", "Example TV Show")
-              service.last_lookup_at -= 2.0
-              service.changed_at -= 2.0
-              service._tick()
-              assert service.trailer.endswith("ZYXWVUTSRQP"), "TV monitor metadata not recovered"
-              assert player.playing, "TV show preview failed after delayed monitor"
-              service._tick()
-              assert service.owned, "TV trailer player ownership failed"
-              stop_before = player.stopped
-              service.changed_at -= 26.5
-              service._tick()
-              assert player.stopped == stop_before + 1, "TV trailer didn't stop before slide"
-              service.stop_queued_at -= 1.0
-              state["position"] = "11"
-              state["title"] = "Different TV Show"
-              state["tmdb_id"] = "999"
-              home.setProperty("TMDbHelper.ListItem.Monitor.TMDb_ID", "888")
-              service._tick()
-              assert not service.trailer, "TMDb ID mismatch must reject stale trailer"
-              state["active_window"] = -1
-              service._tick()
-              print("TV series fallback PASSED: global TMDb monitor, delayed trailer, stale-title/ID guards")
-              print("Spotlight style tests PASSED: Standard and Premium selection")
-
-              assert b"AF3DEV.Trailer.Playing" not in entries["1080i/Includes_Hubs.xml"]
-              assert b'<include name="Background_Video">' in entries["1080i/Includes_Background.xml"]
-              print("Kodi mocks PASSED: native async Stop, widgets, custom hubs, styles, autoscroll")
+                  windows[1102].setProperty("TMDbHelper.WidgetContainer","301")
+                  # A YouTube-only trailer from Emby must simply be ignored.
+                  state.update({"position":"3","title":"Remote-only Film",
+                                "dbtype":"movie", "list_trailer":
+                                "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK",
+                                "movie_trailer":
+                                "plugin://plugin.video.youtube/play/?video_id=ABCDEFGHIJK"})
+                  service._tick()
+                  assert not service.trailer and not player.playing
+                  service.changed_at -= 31.0
+                  service._tick()
+                  assert action_log.count("Control.Move(301,1)") >= 2
+                  print("Emby-only regression PASSED: TV database, no YouTube, early startup guard, Stop and hub timing")
           finally:
               for name, previous in old_modules.items():
-                  if previous is None:
-                      sys.modules.pop(name, None)
-                  else:
-                      sys.modules[name] = previous
+                  if previous is None: sys.modules.pop(name,None)
+                  else: sys.modules[name]=previous
 
           companion = ET.fromstring(service_xml)
           assert companion.get("id") == "service.skin.arctic.fuse.3.dev.trailers"
@@ -486,11 +278,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.14"
+            git commit -m "feat(kodi): Hub Spotlight trailers and Standard/Premium buttons 3.4.2.15"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.14.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.15.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
-          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.4.zip > /tmp/git-stored-service.zip
+          git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.5.zip > /tmp/git-stored-service.zip
           unzip -tq /tmp/git-stored-service.zip
