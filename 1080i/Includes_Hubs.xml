@@ -383,7 +383,7 @@
                 <height>$PARAM[size]</height>
                 <centertop>50%</centertop>
                 <control type="group">
-                    <visible>!Control.HasFocus($PARAM[id])</visible>
+                    <visible>!Skin.HasSetting(Spotlight.PremiumButtons) + !Control.HasFocus($PARAM[id])</visible>
                     <control type="image">
                         <texture colordiffuse="main_fg_100">diffuse/circle/circle_120.png</texture>
                     </control>
@@ -393,7 +393,7 @@
                     </control>
                 </control>
                 <control type="group">
-                    <visible>Control.HasFocus($PARAM[id])</visible>
+                    <visible>!Skin.HasSetting(Spotlight.PremiumButtons) + Control.HasFocus($PARAM[id])</visible>
                     <control type="image">
                         <texture colordiffuse="$VAR[ColorHighlight]">diffuse/circle/circle_120.png</texture>
                     </control>
@@ -402,13 +402,32 @@
                         <texture background="true" colordiffuse="$VAR[ColorSelected]">$PARAM[image]</texture>
                     </control>
                 </control>
+                <!-- The premium style preserves the original focusable button
+                     IDs and click actions, changing only the icon geometry. -->
+                <control type="group">
+                    <visible>Skin.HasSetting(Spotlight.PremiumButtons)</visible>
+                    <control type="image">
+                        <width>$PARAM[size]</width>
+                        <height>64</height>
+                        <centertop>50%</centertop>
+                        <texture border="18" colordiffuse="55FFFFFF">common/box.png</texture>
+                    </control>
+                    <control type="image">
+                        <width>56</width>
+                        <height>56</height>
+                        <centertop>50%</centertop>
+                        <bordersize>12</bordersize>
+                        <texture background="true" colordiffuse="main_fg_100">$PARAM[image]</texture>
+                    </control>
+                </control>
             </control>
             <control type="button" id="$PARAM[id]">
                 <width max="$PARAM[max]">$PARAM[width]</width>
                 <height>80</height>
                 <centertop>50%</centertop>
                 <textoffsetx>0</textoffsetx>
-                <include>Texture_Highlight_Underline_H</include>
+                <include condition="!Skin.HasSetting(Spotlight.PremiumButtons)">Texture_Highlight_Underline_H</include>
+                <include condition="Skin.HasSetting(Spotlight.PremiumButtons)">Texture_Highlight_Spotlight_Premium</include>
                 <font>font_main_bold</font>
                 <textcolor>main_fg_90</textcolor>
                 <focusedcolor>main_fg_100</focusedcolor>
@@ -605,7 +624,7 @@
                      at the configured interval. When disabled (or in another
                      hub window), original Arctic Fuse auto-scroll is untouched. -->
                 <include content="Defs_AutoScroll">
-                    <param name="condition">[!ControlGroup(310).HasFocus() | System.IdleTime(3)] + [!Skin.HasSetting(Spotlight.AutoTrailer) | !Window.IsActive(Home)]</param>
+                    <param name="condition">[!ControlGroup(310).HasFocus() | System.IdleTime(3)] + !Skin.HasSetting(Spotlight.AutoTrailer)</param>
                 </include>
 
                 <itemlayout />
