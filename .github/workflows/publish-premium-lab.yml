@@ -129,7 +129,7 @@ jobs:
           }
           for png, digest in expected_pngs.items():
               b = files[png]
-              assert b.startswith(b'\\x89PNG\\r\\n\\x1a\\n')
+              assert b.startswith(b'\x89PNG\r\n\x1a\n')
               import struct
               assert struct.unpack('>II', b[16:24]) == (96, 84)
               assert hashlib.sha256(b).hexdigest() == digest, f'LAB PNG texture bytes wrong: {png}'
