@@ -1,0 +1,96 @@
+name: Package Arctic Splash 1.0.6 dependency
+on:
+  push:
+    branches: [kodi-repo]
+    paths:
+      - '.github/workflows/package-arctic-splash.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: kodi-repo
+      - name: Fetch authentic Arctic Splash source
+        run: git clone --depth 1 https://github.com/jurialmunkey/resource.images.arctic.splash.git source-arctic-splash
+      - name: Build and inspect full resource package
+        id: archive
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, pathlib, xml.etree.ElementTree as ET
+          from zipfile import ZipFile, ZIP_DEFLATED
+          source = pathlib.Path("source-arctic-splash")
+          manifest = ET.parse(source / "addon.xml").getroot()
+          assert manifest.attrib["id"] == "resource.images.arctic.splash"
+          assert manifest.attrib["version"] == "1.0.6"
+          name = "resource.images.arctic.splash-1.0.6.zip"
+          files = [source/"addon.xml"] + sorted(p for p in (source/"resources").rglob("*") if p.is_file())
+          assert len(files)>500, "Unexpectedly incomplete Arctic Splash source"
+          with ZipFile(name, "w", compression=ZIP_DEFLATED, compresslevel=7, allowZip64=True) as z:
+              for path in files:
+                  z.write(path, "resource.images.arctic.splash/"+str(path.relative_to(source)))
+          with ZipFile(name) as z:
+              assert z.testzip() is None, "ZIP integrity failed"
+              assert z.read("resource.images.arctic.splash/addon.xml") == (source/"addon.xml").read_bytes()
+              assert len(z.namelist())==len(files)
+          data=pathlib.Path(name).read_bytes()
+          print("ZIP size:",len(data),"sha256:",hashlib.sha256(data).hexdigest(),"files:",len(files))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as o:
+              o.write("size="+str(len(data))+"\n")
+              o.write("sha256="+hashlib.sha256(data).hexdigest()+"\n")
+          PY
+          git -C source-arctic-splash rev-parse HEAD > arctic-splash-source-commit.txt
+          sha256sum resource.images.arctic.splash-1.0.6.zip > SHA256SUMS-arctic-splash.txt
+
+      - name: Publish original resource ZIP as GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="arctic-splash-1.0.6-dependency"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Dependency package: Arctic Splash 1.0.6" \
+              --target kodi-repo \
+              --prerelease \
+              --notes "Unmodified original Arctic Splash resource files and addon.xml v1.0.6 from https://github.com/jurialmunkey/resource.images.arctic.splash. Packaged for Kodi 22 dependency of Arctic Fuse 3 DEV 3.4.2.1. Includes the complete resources directory; no invented version numbers or cut-down artwork. Install ZIP manually if Kodi reports failure updating resource.images.arctic.splash. Attribution: jurialmunkey and authors of the original package."
+          fi
+          gh release upload "$TAG" \
+            resource.images.arctic.splash-1.0.6.zip SHA256SUMS-arctic-splash.txt arctic-splash-source-commit.txt --clobber
+
+      - name: Make resource discoverable automatically when under GitHub's blob limit
+        if: steps.archive.outputs.size < 100000000
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          import hashlib, shutil
+          dep=ET.parse("source-arctic-splash/addon.xml").getroot()
+          index=Path("kodi-repository/addons.xml")
+          root=ET.parse(index).getroot()
+          for old in root.findall("addon"):
+              if old.get("id")=="resource.images.arctic.splash":
+                  root.remove(old)
+          root.append(dep)
+          ET.indent(root, space="    ")
+          data=ET.tostring(root, encoding="utf-8", xml_declaration=True)+b"\n"
+          index.write_bytes(data)
+          Path("kodi-repository/addons.xml.md5").write_text(hashlib.md5(data).hexdigest()+"\n")
+          dest=Path("kodi-repository/resource.images.arctic.splash")
+          dest.mkdir(parents=True, exist_ok=True)
+          shutil.copy2("source-arctic-splash/addon.xml",dest/"addon.xml")
+          shutil.copy2("resource.images.arctic.splash-1.0.6.zip",dest)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f kodi-repository/addons.xml kodi-repository/addons.xml.md5 kodi-repository/resource.images.arctic.splash/
+          git commit -m "fix(repo): publish Arctic Splash dependency v1.0.6"
+          git pull --rebase origin kodi-repo
+          git push origin HEAD:kodi-repo
