@@ -59,6 +59,18 @@
         <texturefocus border="18" colordiffuse="$VAR[ColorHighlight]">common/box.png</texturefocus>
         <texturenofocus border="18" colordiffuse="33FFFFFF">common/box.png</texturenofocus>
     </include>
+    <!-- Spotlight Premium v2. The background is painted on the SAME button
+         as its text; the aligned icon is overlaid inside that button's group.
+         The primary action is solid light, the secondary action subdued. -->
+    <include name="Texture_Highlight_Spotlight_Premium_Primary">
+        <texturefocus border="18" colordiffuse="$VAR[ColorHighlight]">common/box.png</texturefocus>
+        <texturenofocus border="18" colordiffuse="EEFFFFFF">common/box.png</texturenofocus>
+    </include>
+    <include name="Texture_Highlight_Spotlight_Premium_Secondary">
+        <texturefocus border="18" colordiffuse="$VAR[ColorHighlight]">common/box.png</texturefocus>
+        <texturenofocus border="18" colordiffuse="990A0A0A">common/box.png</texturenofocus>
+    </include>
+
     <include name="Texture_Highlight_ToggleButton_FakeFocus_H">
         <texturenofocus />
         <texturefocus colordiffuse="$VAR[ColorHighlight]" border="40">common/menu.png</texturefocus>
