@@ -370,6 +370,15 @@
     <!-- Stable single-focus-button strategy. Normal/Premium differ only in
          decoration and compile-time skin appearance attributes. No alternate
          button IDs or hidden focus-bearing groups are introduced. -->
+    <!-- Expand ONE mode-specific graphic position. The previous markup had
+         an unconditional left=80 followed by a Premium left=0, so Kodi kept
+         the first value and pushed Informations 80px to the right. -->
+    <include name="AF3DEV_Spotlight_StandardGraphicOffset">
+        <param name="left">0</param>
+        <definition>
+            <left>$PARAM[left]</left>
+        </definition>
+    </include>
     <include name="AF3DEV_Spotlight_PremiumGraphicOffset">
         <left>0</left>
     </include>
@@ -429,7 +438,11 @@
         <param name="card_text">FFFFFFFF</param>
         <definition>
             <control type="group" id="$PARAM[groupid]">
-                <left>$PARAM[left]</left>
+                <!-- Exclusively selected position, never two competing left
+                     declarations in a single group. Normal: 0/80; Premium: 0/0. -->
+                <include content="AF3DEV_Spotlight_StandardGraphicOffset" condition="Skin.HasSetting(Spotlight.NormalButtons)">
+                    <param name="left">$PARAM[left]</param>
+                </include>
                 <include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumGraphicOffset</include>
                 <width>$PARAM[size]</width>
                 <height>$PARAM[size]</height>
