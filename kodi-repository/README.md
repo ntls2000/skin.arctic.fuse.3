@@ -7,39 +7,39 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.37`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.38`** |
 | Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.36`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
 
-## Validated Premium Spotlight + frozen Emby trailers — DEV 3.4.2.37
+## Normal / Premium Spotlight buttons — DEV 3.4.2.38
 
-**Arctic Fuse 3 DEV 3.4.2.37** is the main skin release integrating the EXACT user-approved Kodi 22 Premium LAB **3.4.2.36** Spotlight graphics while retaining the original DEV addon ID (`skin.arctic.fuse.3.dev`), three Spotlights (Home / Movies / TV), and the separately installed Emby-only trailer companion service **0.4.8**. The user approved both rounded actions and the right-arrow positioning at **65px**; the design has been transplanted byte-for-byte from the accepted LAB commit.
+**Arctic Fuse 3 DEV 3.4.2.38** retains the user-approved Premium style by default and adds **Style des boutons du Spotlight** as a two-state selector in the skin's Spotlight settings. The selector displays **Premium (boutons arrondis)** or **Normal (boutons d'origine)**; selecting it toggles `Spotlight.NormalButtons` and calls `ReloadSkin()` to re-expand graphical style/geometry includes.
 
-- **Lecture:** 360 × 84px rounded action; **Informations:** 320 × 84px rounded action; outlined when inactive and white with dark icon/text when focused; arrow cues stay independent 40 × 40px, right arrow local `<left>65</left>`.
-- Existing native focusable IDs `311` / `312`, parent `316`, click actions, widgets and all Spotlight navigation remain. No rewritten player, stop timing, video/hub logic or Emby / TV paths.
-- Companion `service.skin.arctic.fuse.3.dev.trailers` **0.4.8 remains frozen** (automatic dependency, preview opt-in). The `Spotlight.AutoTrailer` option is preserved. No separate Premium on/off setting: this accepted appearance is now the default in DEV.
-- Source change is limited to three files: `1080i/Includes_Hubs.xml` and dedicated antialiased PNGs `media/common/spotlight-fill.png`, `media/common/spotlight-outline.png`. Automated release tests pin and compare all three files against the accepted LAB 3.4.2.36 commit, verify focus markup and PNG checksums, and rerun the untouched Emby 0.4.8 regression suite.
+- **Premium (default):** user-approved LAB 3.4.2.36 rounded **Lecture 360 × 84px**, **Informations 320 × 84px**, outlined inactive / solid white focused; independent chevron at `<left>65</left>`.
+- **Normal:** original circular Play / Info controls with original icons and underline, original dynamic playback/resume text, 240px Play group and independent chevron offset `<left>20</left>`.
+- **Focus safety:** only ONE permanent pair of native focusable buttons (IDs `311`, `312`); group `316`, actual click actions and Spotlight widget / Hub navigation stay unchanged. This avoids the hidden/replaced focus-control scheme that previously froze Kodi.
+- **Trailers:** separate and unchanged `service.skin.arctic.fuse.3.dev.trailers` **0.4.8**, dependent Emby paths, startup/stop timing, and `Spotlight.AutoTrailer` setting remain exactly as in DEV 3.4.2.38. Spotlight previews are opt-in.
 
-GitHub CI validates build/archive/dependencies but **the integrated DEV 3.4.2.37 release still requires a user test on Kodi 22**, even though identical Premium graphics and controls have been validated in the LAB. The parallel Premium LAB remains available as a separate optional skin.
+The previous `Spotlight.PremiumButtons` key from the discarded historical experiment is deliberately ignored; the fresh `Spotlight.NormalButtons` key leaves Premium enabled by default when absent. CI checks the original circular graphics against the pre-LAB source, the Premium visuals against the accepted LAB source, checksums of both PNGs, the unchanged Emby trailer service and archive integrity. **Live Kodi 22 testing of switching between styles is still required** before considering this new toggle validated.
 
 ## Premium LAB as a separate repository skin
 
 **Premium LAB 3.4.2.36 is available directly from the NTLS2000 Kodi DEV Repository.** The buttons retain the LAB's rounded 84px design and actions **Lecture** and **Informations**. In this release, Lecture remains **360×84 px**, while Informations is reduced to **320×84 px**. The independent navigation chevrons (`image id=314` for previous and `image id=315` for next) have a final mirrored visual spacing adjustment: the right cue is now at a 65px local offset (was 50px in LAB 3.4.2.35), a user-requested spacing compromise; arrow dimensions and fade remain the same. Both remain 40×40px, vertically centred at 50%, keep their original fade/visibility conditions, and remain outside the two focusable buttons. Their actual visual symmetry is pending user confirmation in Kodi. The Play group remains 385px wide, the original focusable controls 311/312 and all button actions are unchanged. Both buttons have an anti-aliased rounded white outline and translucent dark interior when not focused; the focused button alone has a rounded opaque white fill, dark label and icon. Two dedicated lightweight 96×84px PNGs (outline and fill) stretch with a 22px fixed-corner texture border; and preserve the rounded corners at either 360 or 320px width. This replaces the square four-stroke outline of 3.4.2.28 without altering Kodi's original focus IDs 311 and 312, parent group 316, actions or navigation. Actual Kodi 22 appearance is still awaiting user confirmation. In Kodi use **Add-ons > Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins > Arctic Fuse 3 Premium LAB**. When Kodi displays cached repository results, use **Check for updates** first.
 
-Premium LAB has its own add-on ID (`skin.arctic.fuse.3.premium.lab`) and stays independently installable from the main `skin.arctic.fuse.3.dev` **3.4.2.37**, which now includes the approved LAB design. Both are listed in Kodi's `addons.xml` with distinct IDs; both share the unchanged `service.skin.arctic.fuse.3.dev.trailers` **0.4.8**.
+Premium LAB has its own add-on ID (`skin.arctic.fuse.3.premium.lab`) and stays independently installable from the main `skin.arctic.fuse.3.dev` **3.4.2.38**, which now includes the approved LAB design. Both are listed in Kodi's `addons.xml` with distinct IDs; both share the unchanged `service.skin.arctic.fuse.3.dev.trailers` **0.4.8**.
 
-The user validated the LAB's Premium button appearance and arrow offset (65px) on actual Kodi 22 in version **3.4.2.36**. This validation does not automatically cover the integrated DEV 3.4.2.37 package, which also carries the existing Emby trailer integration.
+The user validated the LAB's Premium button appearance and arrow offset (65px) on actual Kodi 22 in version **3.4.2.36**. This validation does not automatically cover the integrated DEV 3.4.2.38 package, which also carries the existing Emby trailer integration.
 
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.37**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.38**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.37/skin.arctic.fuse.3.dev-3.4.2.37.zip) and choose **Install from ZIP**.
+Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.38/skin.arctic.fuse.3.dev-3.4.2.38.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.37 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.38 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
 
