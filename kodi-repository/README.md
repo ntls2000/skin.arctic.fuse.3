@@ -7,10 +7,25 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.39`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.40`** |
 | Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.36`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
+
+## Export / Import de mes hubs — DEV 3.4.2.40
+
+**Arctic Fuse 3 DEV 3.4.2.40** adds a portable, hub-specific ZIP export and restore workflow for Android TV / Google TV / Nvidia Shield without modifying the approved Spotlight button or the Emby-only trailer service `0.4.8`.
+
+In **Parametres du skin > Menus**, there are now two Kodi commands:
+
+1. **Sauvegarder mes hubs (ZIP)** — on your source Kodi PC, select a Kodi File Manager location (USB drive or SMB/NFS network share). The skin builds a timestamped `ArcticFuse3-DEV-Hubs-YYYYMMDD-HHMMSS.zip` and copies it to the selected destination through Kodi VFS.
+2. **Restaurer mes hubs (ZIP)** — on the TV (with the *same* Arctic Fuse 3 DEV add-on installed), browse for the saved ZIP and confirm. A dated automatic safety ZIP is written under `special://profile/addon_data/skin.arctic.fuse.3.dev/hub-backups/` before existing hub files are changed. After success, **exit Kodi and restart** to reload menu/widget caches.
+
+The tool copies this skin's Skin Variables shortcut nodes and user-profile folders from `special://profile/addon_data/script.skinvariables/nodes/skin.arctic.fuse.3.dev[-profile]`, and exports only hub-related keys (`HomeSwitcher.*`, `Shortcuts.*`, `SkinVariables.SkinUser*`, `Hub.*`) from this skin's settings XML. **It does not export/overwrite `Spotlight.NormalButtons`, `Spotlight.AutoTrailer`, Emby accounts, trailer paths, player state or any unrelated Kodi/skin settings.** Other add-ons, widget providers, playlists, art images or Emby server references referenced by custom paths must also be available and correctly configured on the target device.
+
+Safety: the ZIP contains a versioned manifest, SHA-256 checksums and bounded filenames/content size. Import rejects unexpected paths and corrupt archives, requests user confirmation and automatically saves the target configuration before changes. The implementation uses only Kodi's built-in Python/VFS APIs, so there is no new trailer/service dependency. The ZIP may contain personal library paths, so store it privately, **not in a public GitHub repository**.
+
+GitHub Actions passed the ZIP export/restore simulation, path traversal/forged checksum tests, hub-settings merge preservation, frozen Emby 0.4.8 regression suite, and byte-for-byte public ZIP mirror verification. **Real hardware testing on Android TV remains necessary**, particularly USB/SMB permissions and refreshing live widgets after restart.
 
 ## Normal / Premium Spotlight buttons — DEV 3.4.2.39
 
@@ -34,12 +49,12 @@ The user validated the LAB's Premium button appearance and arrow offset (65px) o
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.39**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.40**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.39/skin.arctic.fuse.3.dev-3.4.2.39.zip) and choose **Install from ZIP**.
+Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.40/skin.arctic.fuse.3.dev-3.4.2.40.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.39 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.40 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
 
