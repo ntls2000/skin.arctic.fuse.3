@@ -572,7 +572,9 @@
                          outside the compact 320px Information card visually;
                          it is not part of either focusable button. -->
                     <control type="image" id="315">
-                        <left>100</left>
+                        <!-- Mirrored optical spacing: balance 314's gap before
+                             Lecture against the gap after Informations. -->
+                        <left>185</left>
                         <width>40</width>
                         <height>40</height>
                         <centertop>50%</centertop>
