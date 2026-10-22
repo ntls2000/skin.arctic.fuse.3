@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<smartplaylist type="movies">
+    <name>Films : thrillers &amp; suspense</name>
+    <match>all</match>
+    <rule field="genre" operator="contains">
+        <value>Thriller</value>
+        <value>Suspense</value>
+    </rule>
+    <limit>60</limit>
+    <order direction="descending">dateadded</order>
+</smartplaylist>

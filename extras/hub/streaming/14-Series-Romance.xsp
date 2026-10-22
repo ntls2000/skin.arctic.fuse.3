@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<smartplaylist type="tvshows">
+    <name>Séries : romance</name>
+    <match>all</match>
+    <rule field="genre" operator="contains">
+        <value>Romance</value>
+        <value>Romantique</value>
+        <value>Romantic</value>
+    </rule>
+    <limit>60</limit>
+    <order direction="descending">dateadded</order>
+</smartplaylist>

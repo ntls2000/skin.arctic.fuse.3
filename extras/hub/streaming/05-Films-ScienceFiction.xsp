@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<smartplaylist type="movies">
+    <name>Films : science-fiction &amp; fantastique</name>
+    <match>all</match>
+    <rule field="genre" operator="contains">
+        <value>Science Fiction</value>
+        <value>Science-Fiction</value>
+        <value>Sci-Fi</value>
+        <value>Fantastique</value>
+        <value>Fantasy</value>
+    </rule>
+    <limit>60</limit>
+    <order direction="descending">dateadded</order>
+</smartplaylist>

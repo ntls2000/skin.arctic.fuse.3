@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<smartplaylist type="tvshows">
+    <name>Séries : policier &amp; crime</name>
+    <match>all</match>
+    <rule field="genre" operator="contains">
+        <value>Policier</value>
+        <value>Crime</value>
+        <value>Mystery</value>
+    </rule>
+    <limit>60</limit>
+    <order direction="descending">dateadded</order>
+</smartplaylist>
