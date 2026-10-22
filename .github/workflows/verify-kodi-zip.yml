@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          name='skin.arctic.fuse.3.dev-3.4.2.40.zip'
+          name='skin.arctic.fuse.3.dev-3.4.2.41.zip'
           local_file="kodi-repository/skin.arctic.fuse.3.dev/$name"
           source_url="https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.dev/$name"
           echo "Local file:"
@@ -45,15 +45,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-dev-3.4.2.40'
-          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.40.zip'
+          tag='arctic-fuse-3-dev-3.4.2.41'
+          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.41.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target kodi-repo \
-              --title 'Arctic Fuse 3 DEV 3.4.2.40 (Kodi installer)' \
-              --notes 'Arctic Fuse 3 DEV 3.4.2.40 adds Sauvegarder mes hubs (ZIP) and Restaurer mes hubs (ZIP) under skin menu settings for transfer from Kodi PC to Android TV, Google TV or Nvidia Shield. Export includes only this DEV skins custom Skin Variables nodes/profiles and hub-related HomeSwitcher/Shortcuts skin settings; import checks SHA256 and safe paths, creates a local automatic safety backup before applying, and merges only hub keys. Spotlight.AutoTrailer, Spotlight.NormalButtons, Emby private settings, buttons, focus, video and frozen trailer service 0.4.8 are NOT modified. User must restart Kodi on TV after restore; custom add-ons and Emby paths must also exist on TV. Automated export/import security tests and Emby regression suite pass. Actual Android TV integration still requires user confirmation.'
+              --title 'Arctic Fuse 3 DEV 3.4.2.41 (Kodi installer)' \
+              --notes 'Arctic Fuse 3 DEV 3.4.2.41 adds 14 Kodi smart playlists (eight movies, six series) for Netflix / Prime Video / Apple TV genre-based hubs: action, romance, comedy, thrillers, sci-fi, horror, animation, documentaries, crime and drama. Additive files only under extras/hub/streaming, referenced by an independent custom hubs ZIP. Genres filter the synchronized local Kodi video database (including synced Emby items), not unverified remote Emby categories; empty shelves are possible if no matching genre or unsynced media. Spotlight layout and focus, Premium/Normal style selector, hub backup/restore, Emby trailer engine, and the separate Emby service 0.4.8 are unchanged. CI verifies playlists, Emby regressions, ZIP integrity and public download. Kodi 22 visual test pending.'
           fi
           gh release upload "$tag" "$asset" --clobber
-          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.40.zip"
+          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.41.zip"
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/release-skin.zip --write-out 'release_http=%{http_code} release_bytes=%{size_download}\n' "$url"
           cmp "$asset" /tmp/release-skin.zip
           unzip -tq /tmp/release-skin.zip
