@@ -35,7 +35,7 @@ jobs:
 
           SRC = 'skin.arctic.fuse.3'
           LAB = 'skin.arctic.fuse.3.premium.lab'
-          VERSION = '3.4.2.31'
+          VERSION = '3.4.2.32'
           SERVICE = 'service.skin.arctic.fuse.3.dev.trailers'
           out = Path('/tmp') / f'{LAB}-{VERSION}.zip'
 
@@ -109,9 +109,17 @@ jobs:
           assert '<param name="max">310</param>\n                        <param name="card_width">320</param>' in hub
           # Right arrow is the independent non-focusable image ID 315.
           # Shift its own layout offset to the right, not the native buttons.
-          assert '<control type="image" id="315">\n                        <left>100</left>' in hub
+          assert hub.count('<control type="image" id="314">') == 1
           assert hub.count('<control type="image" id="315">') == 1
-          assert 'special://skin/extras/icons/angle-right.png' in hub
+          left_cue = hub.split('<control type="image" id="314">', 1)[1].split('</control>', 1)[0]
+          right_cue = hub.split('<control type="image" id="315">', 1)[1].split('</control>', 1)[0]
+          assert '<left>185</left>' in right_cue, "Right chevron must mirror screenshot spacing"
+          assert '<width>40</width>' in left_cue and '<width>40</width>' in right_cue
+          assert '<height>40</height>' in left_cue and '<height>40</height>' in right_cue
+          assert '<centertop>50%</centertop>' in left_cue and '<centertop>50%</centertop>' in right_cue
+          assert 'angle-left.png' in left_cue and 'angle-right.png' in right_cue
+          assert '<include content="Animation_Fade_Out">' in right_cue
+          assert '<include content="Animation_Fade_In">' in right_cue
           assert '<width>435</width>' not in hub
           assert '<param name="card_width">410</param>' not in hub
           assert hub.count('<param name="card_bg">330A0A0A</param>') == 3, "Both unfocused centres must be translucent"
@@ -167,25 +175,25 @@ jobs:
           print('LAB ZIP:', out)
           print('FILES:', len(files))
           PY
-          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip
-          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip
+          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip
+          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip
       - name: Release pre-verified standalone lab ZIP
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-premium-lab-3.4.2.31'
-          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip'
+          tag='arctic-fuse-3-premium-lab-3.4.2.32'
+          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target lab-premium-spotlight \
-              --title 'Arctic Fuse 3 Premium LAB 3.4.2.31 (isolated experiment)' \
-              --notes 'UNVALIDATED Kodi 22 LAB: Lecture remains 360x84px; Informations is narrowed to 320x84px. The separate Spotlight horizontal navigation chevron (image 315) is offset to the right outside the Information border; it is not removed. Rounded borders and focus behavior preserved. Native 311/312, group 316, Emby service 0.4.8 and separate stable DEV 3.4.2.24 unchanged.'
+              --title 'Arctic Fuse 3 Premium LAB 3.4.2.32 (isolated experiment)' \
+              --notes 'UNVALIDATED Kodi 22 LAB cosmetic finish: align the independent left/right Spotlight navigation chevrons symmetrically around Lecture (360x84px) and Informations (320x84px). Image 315 right offset adjusted from 100 to 185 after user screenshot. Both arrow images remain 40x40, at 50 percent vertical centre with original fade. No changes to focus IDs 311/312, group 316, Emby trailer service 0.4.8 or stable DEV 3.4.2.24.'
           fi
           gh release upload "$tag" "$zip" --clobber
           curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-public-check.zip \
-            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip"
+            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip"
           cmp "$zip" /tmp/lab-public-check.zip
           unzip -tq /tmp/lab-public-check.zip
           echo 'PREMIUM LAB release verified byte-for-byte after public download' 
@@ -202,7 +210,7 @@ jobs:
 
           root_dir = Path('kodi-repository')
           lab_id = 'skin.arctic.fuse.3.premium.lab'
-          lab_version = '3.4.2.31'
+          lab_version = '3.4.2.32'
           lab_file = f'{lab_id}-{lab_version}.zip'
           src_zip = Path('/tmp') / lab_file
           lab_dir = root_dir / lab_id
@@ -254,7 +262,7 @@ jobs:
               'Expected stable DEV, trailer service and previous LAB', existing_ids)
           previous_lab = catalog_root.find(f"./addon[@id='{lab_id}']")
           assert previous_lab is not None
-          assert previous_lab.get('version') in ('3.4.2.30', lab_version)
+          assert previous_lab.get('version') in ('3.4.2.31', lab_version)
           catalog_root.remove(previous_lab)
           catalog_root.append(lab_manifest)
           ids = [child.get('id') for child in catalog_root]
@@ -275,14 +283,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.premium.lab/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           git diff --cached --quiet && { echo "Lab catalog was not changed"; exit 1; }
-          git commit -m 'repo(kodi): Premium LAB 3.4.2.31 320px Info card with outside arrow'
+          git commit -m 'repo(kodi): Premium LAB 3.4.2.32 mirrored Spotlight chevrons'
           git push origin HEAD:kodi-repo
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip > /tmp/git-stored-lab.zip
-          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip > /tmp/git-stored-lab.zip
+          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip
           unzip -tq /tmp/git-stored-lab.zip
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-repository-download.zip \
-            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.31.zip
+            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.32.zip
           cmp /tmp/git-stored-lab.zip /tmp/lab-repository-download.zip
           unzip -tq /tmp/lab-repository-download.zip
           git show HEAD:kodi-repository/addons.xml | grep 'skin.arctic.fuse.3.premium.lab'
