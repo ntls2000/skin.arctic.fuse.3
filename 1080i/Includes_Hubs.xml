@@ -367,6 +367,52 @@
         <onback condition="Player.HasMedia">309</onback>
     </include>
 
+    <!-- Stable single-focus-button strategy. Normal/Premium differ only in
+         decoration and compile-time skin appearance attributes. No alternate
+         button IDs or hidden focus-bearing groups are introduced. -->
+    <include name="AF3DEV_Spotlight_PremiumGraphicOffset">
+        <left>0</left>
+    </include>
+    <include name="AF3DEV_Spotlight_StandardPlayGroupWidth">
+        <width>240</width>
+    </include>
+    <include name="AF3DEV_Spotlight_PremiumPlayGroupWidth">
+        <width>385</width>
+    </include>
+    <include name="AF3DEV_Spotlight_StandardRightArrowOffset">
+        <left>20</left>
+    </include>
+    <include name="AF3DEV_Spotlight_PremiumRightArrowOffset">
+        <left>65</left>
+    </include>
+    <include name="AF3DEV_Spotlight_ButtonAppearance_Standard">
+        <param name="width">auto</param>
+        <param name="standardmax"></param>
+        <definition>
+            <width max="$PARAM[standardmax]">$PARAM[width]</width>
+            <height>80</height>
+            <textoffsetx>0</textoffsetx>
+            <include>Texture_Highlight_Underline_H</include>
+            <textcolor>main_fg_90</textcolor>
+            <focusedcolor>$VAR[AF3DEV_SpotlightFocusedLabelColor]</focusedcolor>
+        </definition>
+    </include>
+    <include name="AF3DEV_Spotlight_ButtonAppearance_Premium">
+        <param name="width">auto</param>
+        <param name="max"></param>
+        <param name="card_text">FFFFFFFF</param>
+        <definition>
+            <width max="$PARAM[max]">$PARAM[width]</width>
+            <height>84</height>
+            <textoffsetx>0</textoffsetx>
+            <aligny>center</aligny>
+            <texturefocus />
+            <texturenofocus />
+            <textcolor>$PARAM[card_text]</textcolor>
+            <focusedcolor>FF181818</focusedcolor>
+        </definition>
+    </include>
+
     <include name="Hub_Spotlight_Button_Circle">
         <param name="id">311</param>
         <param name="groupid">321</param>
@@ -376,23 +422,33 @@
         <param name="size">120</param>
         <param name="left">0</param>
         <param name="width">auto</param>
+        <param name="standardmax"></param>
         <param name="card_width">360</param>
         <param name="card_bg">330A0A0A</param>
         <param name="card_icon">FFFFFFFF</param>
         <param name="card_text">FFFFFFFF</param>
         <definition>
             <control type="group" id="$PARAM[groupid]">
-                <!-- LAB ONLY: skin 3.4.2.24 native group/item structure is
-                     unchanged. Decor is drawn into EXISTING 321/322 groups.
-                     The original focusable 311/312 remain sibling controls. -->
                 <left>$PARAM[left]</left>
+                <include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumGraphicOffset</include>
                 <width>$PARAM[size]</width>
                 <height>$PARAM[size]</height>
                 <centertop>50%</centertop>
+                <!-- Standard original circle, non-focus -->
                 <control type="group">
-                    <visible>!Control.HasFocus($PARAM[id])</visible>
-                    <!-- Thin, ANTIALIASED rounded border. Transparent centre:
-                         no four-stroke square corners or white underlay. -->
+                    <visible>Skin.HasSetting(Spotlight.NormalButtons) + !Control.HasFocus($PARAM[id])</visible>
+                    <control type="image">
+                        <texture colordiffuse="main_fg_100">diffuse/circle/circle_120.png</texture>
+                    </control>
+                <!-- Standard original circle, focus -->
+                <control type="group">
+                    <visible>Skin.HasSetting(Spotlight.NormalButtons) + Control.HasFocus($PARAM[id])</visible>
+                    <control type="image">
+                        <texture colordiffuse="$VAR[ColorHighlight]">diffuse/circle/circle_120.png</texture>
+                    </control>
+                <!-- User-approved Premium LAB 3.4.2.36, non-focus -->
+                <control type="group">
+                    <visible>!Skin.HasSetting(Spotlight.NormalButtons) + !Control.HasFocus($PARAM[id])</visible>
                     <control type="image">
                         <width>$PARAM[card_width]</width>
                         <height>84</height>
@@ -413,8 +469,9 @@
                         <texture background="true" colordiffuse="$PARAM[card_icon]">$PARAM[image]</texture>
                     </control>
                 </control>
+                <!-- User-approved Premium LAB 3.4.2.36, focus -->
                 <control type="group">
-                    <visible>Control.HasFocus($PARAM[id])</visible>
+                    <visible>!Skin.HasSetting(Spotlight.NormalButtons) + Control.HasFocus($PARAM[id])</visible>
                     <control type="image">
                         <width>$PARAM[card_width]</width>
                         <height>84</height>
@@ -430,19 +487,19 @@
                     </control>
                 </control>
             </control>
+            <!-- ALWAYS one real navigable button for each ID 311 / 312 -->
             <control type="button" id="$PARAM[id]">
-                <width max="$PARAM[max]">$PARAM[width]</width>
-                <height>84</height>
+                <include content="AF3DEV_Spotlight_ButtonAppearance_Standard" condition="Skin.HasSetting(Spotlight.NormalButtons)">
+                    <param name="width">$PARAM[width]</param>
+                    <param name="standardmax">$PARAM[standardmax]</param>
+                </include>
+                <include content="AF3DEV_Spotlight_ButtonAppearance_Premium" condition="!Skin.HasSetting(Spotlight.NormalButtons)">
+                    <param name="width">$PARAM[width]</param>
+                    <param name="max">$PARAM[max]</param>
+                    <param name="card_text">$PARAM[card_text]</param>
+                </include>
                 <centertop>50%</centertop>
-                <textoffsetx>0</textoffsetx>
-                <aligny>center</aligny>
-                <!-- Card/hover is drawn in the ORIGINAL sibling graphic group;
-                     suppress only the original underline texture. -->
-                <texturefocus />
-                <texturenofocus />
                 <font>font_main_bold</font>
-                <textcolor>$PARAM[card_text]</textcolor>
-                <focusedcolor>FF181818</focusedcolor>
                 <label>$PARAM[label]</label>
                 <nested />
                 <left>20</left>
@@ -515,15 +572,17 @@
                     </control>
 
                     <control type="group" id="316">
-                        <width>385</width>
+                        <include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardPlayGroupWidth</include>
+                        <include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumPlayGroupWidth</include>
                         <orientation>horizontal</orientation>
 
                         <include content="Hub_Spotlight_Button_Circle">
                             <param name="id">311</param>
                             <param name="groupid">321</param>
-                            <param name="label">Lecture</param>
+                            <param name="label">$VAR[AF3DEV_SpotlightPlayButtonLabel]</param>
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">260</param>
+                            <param name="standardmax">160</param>
                             <param name="card_width">360</param>
                             <param name="card_bg">330A0A0A</param>
                             <param name="card_icon">FFFFFFFF</param>
@@ -549,11 +608,11 @@
                     <include content="Hub_Spotlight_Button_Circle">
                         <param name="id">312</param>
                         <param name="groupid">322</param>
-                        <param name="label">Informations</param>
+                        <param name="label">$VAR[AF3DEV_SpotlightInfoButtonLabel]</param>
                         <param name="image">$VAR[Image_FullscreenWidget_InfoButton]</param>
                         <param name="size">60</param>
                         <param name="bordersize">0</param>
-                        <param name="left">0</param>
+                        <param name="left">80</param>
                         <param name="max">310</param>
                         <param name="card_width">320</param>
                         <param name="card_bg">330A0A0A</param>
@@ -574,7 +633,8 @@
                     <control type="image" id="315">
                         <!-- Optical spacing trial: user-requested right chevron
                              at 65 instead of 50. No other layout changes. -->
-                        <left>65</left>
+                        <include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardRightArrowOffset</include>
+                        <include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumRightArrowOffset</include>
                         <width>40</width>
                         <height>40</height>
                         <centertop>50%</centertop>
