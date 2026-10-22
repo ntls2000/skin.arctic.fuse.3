@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.37"
+          DEV_VER = "3.4.2.38"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -74,10 +74,11 @@ jobs:
           assert "<label>Activer les trailers dans le Spotlight</label>" in setting_source
           assert "<selected>Skin.HasSetting(Spotlight.AutoTrailer)</selected>" in setting_source
           assert "<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>" in setting_source
-          # Kodi 22 TESTED VISUALLY BY USER in the independent LAB 3.4.2.36.
-          # The DEV release integrates the exact validated 3-file Spotlight
-          # design, WITHOUT migrating the LAB addon ID or trailer engine.
-          # Do not restructure focusable 311/312 or navigation group 316.
+          # Opt-in ORIGINAL appearance restored with a permanent SINGLE
+          # focusable pair (311/312); no condition on button visibility or IDs.
+          # Default remains the user-approved Premium LAB 3.4.2.36 look.
+          # The setting reloads Kodi's skin so conditional appearance includes
+          # update their sizes, texture, label, arrow and graphical offsets.
           hub_xml = entries["1080i/Includes_Hubs.xml"].decode("utf-8")
           texture_xml = entries["1080i/Includes_Textures.xml"].decode("utf-8")
           home_xml = entries["1080i/Includes_Home.xml"].decode("utf-8")
@@ -86,70 +87,125 @@ jobs:
           assert 'Hub_Spotlight_Button_Premium' not in hub_xml
           assert hub_xml.count('<include content="Hub_Spotlight_Button_Circle">') == 2
           assert '<include content="Hub_Spotlight_Button_Circle" condition=' not in hub_xml
-          spotlight = hub_xml.split('<include name="Hub_Spotlight_Button_Circle">', 1)[1].split('</definition>', 1)[0]
-          assert spotlight.count('<control type="button" id="$PARAM[id]">') == 1
-          assert spotlight.count('<control type="group" id="$PARAM[groupid]">') == 1
-          assert '<nested />' in spotlight
-          assert '<height>84</height>' in spotlight
-          assert spotlight.count('<height>84</height>') == 4
-          assert '<texture border="22" colordiffuse="DDFFFFFF">common/spotlight-outline.png</texture>' in spotlight
-          assert '<texture border="22" colordiffuse="FFFFFFFF">common/spotlight-fill.png</texture>' in spotlight
-          assert '<visible>!Control.HasFocus($PARAM[id])</visible>' in spotlight
-          assert '<visible>Control.HasFocus($PARAM[id])</visible>' in spotlight
-          assert '<focusedcolor>FF181818</focusedcolor>' in spotlight
+          assert '<control type="group" id="316">' in hub_xml
+          hub_tree = ET.fromstring(hub_xml)
+          skin_calls = hub_tree.findall(".//include[@content='Hub_Spotlight_Button_Circle']")
+          assert len(skin_calls) == 2
+          assert [next(p.text for p in call.findall("param") if p.get("name") == "id")
+                  for call in skin_calls] == ["311", "312"]
+          spotlight_root = hub_tree.find("./include[@name='Hub_Spotlight_Button_Circle']")
+          assert spotlight_root is not None
+          template = spotlight_root.find("definition")
+          native_buttons = template.findall("./control[@type='button']")
+          original_groups = template.findall("./control[@type='group']")
+          assert len(native_buttons) == 1 and native_buttons[0].get("id") == "$PARAM[id]"
+          assert len(original_groups) == 1 and original_groups[0].get("id") == "$PARAM[groupid]"
+          assert native_buttons[0].find("nested") is not None
+          graphic_groups = original_groups[0].findall("./control[@type='group']")
+          assert len(graphic_groups) == 4, "Exactly 2 decorative states in each of the 2 styles"
+          conditions = [child.findtext("visible") for child in graphic_groups]
+          assert conditions == [
+              "Skin.HasSetting(Spotlight.NormalButtons) + !Control.HasFocus($PARAM[id])",
+              "Skin.HasSetting(Spotlight.NormalButtons) + Control.HasFocus($PARAM[id])",
+              "!Skin.HasSetting(Spotlight.NormalButtons) + !Control.HasFocus($PARAM[id])",
+              "!Skin.HasSetting(Spotlight.NormalButtons) + Control.HasFocus($PARAM[id])",
+          ]
+          assert all(child.get("type") == "group" for child in graphic_groups)
+          # Compare original circular graphics and Premium rounded graphics
+          # against separate frozen, tested source versions (tag edits aside).
+          old_xml = subprocess.check_output(["git", "show",
+              "2635b1ff0b5c6524aae89ee4f65398bc31475598:1080i/Includes_Hubs.xml"])
+          old_lab_xml = subprocess.check_output(["git", "show",
+              "513f00e028cd3ef2c8c71537512d6c18178d7d79:1080i/Includes_Hubs.xml"])
+          def decorative_groups(data):
+              root = ET.fromstring(data)
+              include = root.find("./include[@name='Hub_Spotlight_Button_Circle']")
+              assert include is not None
+              return include.find("definition").find("./control[@type='group']").findall("./control[@type='group']")
+          def canon(el):
+              return (el.tag, tuple(sorted(el.attrib.items())), (el.text or "").strip(),
+                      tuple(canon(c) for c in el))
+          for cur, expected in zip(graphic_groups[:2], decorative_groups(old_xml)):
+              # Visibility is extended only with a skin setting, not a new control.
+              cur.find("visible").text = cur.find("visible").text.replace(
+                  "Skin.HasSetting(Spotlight.NormalButtons) + ", "", 1)
+              assert canon(cur) == canon(expected), "Original Arctic Fuse circular artwork changed"
+          for cur, expected in zip(graphic_groups[2:], decorative_groups(old_lab_xml)):
+              cur.find("visible").text = cur.find("visible").text.replace(
+                  "!Skin.HasSetting(Spotlight.NormalButtons) + ", "", 1)
+              assert canon(cur) == canon(expected), "User-approved LAB rounded artwork changed"
           assert hub_xml.count('<param name="card_width">360</param>') == 2
           assert hub_xml.count('<param name="card_width">320</param>') == 1
-          assert '<param name="label">Lecture</param>' in hub_xml
-          assert '<param name="label">Informations</param>' in hub_xml
-          assert '<control type="group" id="316">' in hub_xml
-          assert '<width>385</width>' in hub_xml
+          assert '<width>240</width>' in hub_xml and '<width>385</width>' in hub_xml
+          assert '<left>20</left>' in hub_xml and '<left>65</left>' in hub_xml
+          assert '<include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardPlayGroupWidth</include>' in hub_xml
+          assert '<include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumPlayGroupWidth</include>' in hub_xml
+          assert '<include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardRightArrowOffset</include>' in hub_xml
+          assert '<include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumRightArrowOffset</include>' in hub_xml
+          style_normal = hub_tree.find("./include[@name='AF3DEV_Spotlight_ButtonAppearance_Standard']")
+          style_premium = hub_tree.find("./include[@name='AF3DEV_Spotlight_ButtonAppearance_Premium']")
+          assert style_normal is not None and style_premium is not None
+          assert style_normal.findtext("./definition/height") == "80"
+          assert style_premium.findtext("./definition/height") == "84"
+          assert style_normal.find("./definition/include").text == "Texture_Highlight_Underline_H"
+          assert style_premium.findtext("./definition/focusedcolor") == "FF181818"
+          include_attrs = [c.get("condition") for c in native_buttons[0].findall("include")]
+          assert include_attrs == [
+              "Skin.HasSetting(Spotlight.NormalButtons)",
+              "!Skin.HasSetting(Spotlight.NormalButtons)",
+          ]
+          assert '<param name="label">$VAR[AF3DEV_SpotlightPlayButtonLabel]</param>' in hub_xml
+          assert '<param name="label">$VAR[AF3DEV_SpotlightInfoButtonLabel]</param>' in hub_xml
+          assert '<value>Lecture</value>' in home_xml
+          assert '<value>Informations</value>' in home_xml
+          assert '$VAR[Label_FullscreenWidget_PlayButton]' in home_xml
+          assert '$VAR[Label_FullscreenWidget_InfoButton]' in home_xml
+          assert 'Normal (boutons d\'origine)' in home_xml
+          assert '<value>Premium (boutons arrondis)</value>' in home_xml
           assert '<onright>312</onright>' in hub_xml
           assert '<ondown>$VAR[Hub_Action_Widgets]</ondown>' in hub_xml
           assert '<onclick>SetFocus(311)</onclick>' in hub_xml
           assert '<onclick>SetFocus(312)</onclick>' in hub_xml
-          arrow_left = hub_xml.split('<control type="image" id="314">', 1)[1].split('</control>', 1)[0]
-          arrow_right = hub_xml.split('<control type="image" id="315">', 1)[1].split('</control>', 1)[0]
-          assert '<left>65</left>' in arrow_right
-          for arrow in (arrow_left, arrow_right):
-              assert '<width>40</width>' in arrow and '<height>40</height>' in arrow
-              assert '<centertop>50%</centertop>' in arrow
           assert 'Skin.HasSetting(Spotlight.PremiumButtons)' not in hub_xml
-          assert 'description="Spotlight Buttons Style"' not in setting_source
+          assert 'Skin.HasSetting(Spotlight.PremiumButtons)' not in home_xml
+          assert '<label>Style des boutons du Spotlight</label>' in setting_source
+          assert '<label2>$VAR[AF3DEV_SpotlightButtonStyle]</label2>' in setting_source
+          assert '<onclick>Skin.ToggleSetting(Spotlight.NormalButtons)</onclick>' in setting_source
+          assert '<onclick>ReloadSkin()</onclick>' in setting_source
           assert 'Skin.ToggleSetting(Spotlight.PremiumButtons)' not in setting_source
           assert '<label>Activer les trailers dans le Spotlight</label>' in setting_source
           assert '<onclick>Skin.ToggleSetting(Spotlight.AutoTrailer)</onclick>' in setting_source
-          assert 'Skin.HasSetting(Spotlight.PremiumButtons)' not in home_xml
-          assert 'name="AF3DEV_SpotlightFocusedLabelColor"' in home_xml
-          # Exact LAB source assets pinned to the user-validated 3.4.2.36 Git commit.
-          # Only the addon ID rewrite performed by our packager is allowed.
-          frozen_lab = "513f00e028cd3ef2c8c71537512d6c18178d7d79"
-          paths = (
-              "1080i/Includes_Hubs.xml",
-              "media/common/spotlight-fill.png",
-              "media/common/spotlight-outline.png",
-          )
+          # Exact certified LAB PNGs (no visual modification), even in Normal.
           import struct
           digests = {
               "media/common/spotlight-outline.png": "cc16465f70a043b9326fdd26a5740965399ca80833537574820913d9c3c3f134",
               "media/common/spotlight-fill.png": "7e521cd8bd9c0dcd9a3f2a7481cb858f8d1f29ff55d00f693e8c6250a0d1da7d",
           }
-          for src_name in paths:
-              lab_bytes = subprocess.check_output(["git","show", frozen_lab + ":" + src_name])
-              if src_name.endswith(".xml"):
-                  lab_bytes = lab_bytes.decode("utf-8").replace(SRC_ID, DEV_ID).encode("utf-8")
-              assert entries[src_name] == lab_bytes, "Published Premium differs from user-validated LAB: " + src_name
-              if src_name.endswith(".png"):
-                  assert lab_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
-                  assert struct.unpack(">II", lab_bytes[16:24]) == (96, 84)
-                  assert hashlib.sha256(lab_bytes).hexdigest() == digests[src_name]
+          for src_name, digest in digests.items():
+              source_bytes = subprocess.check_output(["git", "show",
+                  "513f00e028cd3ef2c8c71537512d6c18178d7d79:" + src_name])
+              assert entries[src_name] == source_bytes, "Premium art changed: " + src_name
+              assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
+              assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
+              assert hashlib.sha256(source_bytes).hexdigest() == digest
+          prior_commit = "68fc5ed5f77eb9a31ff6b5cd3158814cba505646"
+          expected_paths = [
+              "1080i/Includes_Home.xml", "1080i/Includes_Hubs.xml",
+              "1080i/Includes_SkinSettings.xml",
+          ]
           source_changes = subprocess.check_output([
-              "git", "diff", "--name-only",
-              "2635b1ff0b5c6524aae89ee4f65398bc31475598", SOURCE_REF
+              "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
-          assert source_changes == sorted(paths), (
-              "DEV 3.4.2.37 must modify only validated Spotlight XML + two PNGs", source_changes)
-          print("Validated Spotlight 3.4.2.36 integration PASSED: IDs 311/312, group 316, French labels, 65px chevron, exact rounded assets")
-          print("Premium trailers setting PASSED: unchanged Spotlight.AutoTrailer and frozen Emby 0.4.8")
+          assert source_changes == expected_paths, (
+              "DEV 3.4.2.38 must change only three Spotlight/style XML files",
+              source_changes)
+          for name in ("addon.xml", "service.py"):
+              name = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers/" + name
+              assert subprocess.check_output(["git","show",prior_commit+":"+name]) == (
+                     subprocess.check_output(["git","show",SOURCE_REF+":"+name])), "Emby service changed"
+          print("Premium/Normal selector PASSED: one permanent 311/312 focus pair, four graphical states, 240/385 widths, 20/65 chevrons")
+          print("Normal visuals identical to original 3.4.2.24; Premium visuals identical to user-approved LAB 3.4.2.36")
+          print("Skin setting PASSED: Premium default, reversible Normal mode, ReloadSkin; AutoTrailer separate")
           assert "shortcuts/skinvariables-generator.json" in entries
           assert any(x.get("addon") == "service.skin.arctic.fuse.3.dev.trailers" and x.get("version") == "0.4.8" and x.get("optional") is None for x in manifest.findall("./requires/import"))
           # Compile-check the service without importing Kodi runtime modules.
@@ -458,10 +514,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): 3.4.2.37 validated rounded Premium buttons with frozen Emby trailers 0.4.8"
+            git commit -m "feat(kodi): 3.4.2.38 reversible Normal/Premium Spotlight styles, frozen Emby trailers 0.4.8"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.37.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.38.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
