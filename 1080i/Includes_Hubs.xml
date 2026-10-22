@@ -376,7 +376,7 @@
         <param name="size">120</param>
         <param name="left">0</param>
         <param name="width">auto</param>
-        <param name="card_width">410</param>
+        <param name="card_width">360</param>
         <param name="card_bg">330A0A0A</param>
         <param name="card_icon">FFFFFFFF</param>
         <param name="card_text">FFFFFFFF</param>
@@ -515,7 +515,7 @@
                     </control>
 
                     <control type="group" id="316">
-                        <width>435</width>
+                        <width>385</width>
                         <orientation>horizontal</orientation>
 
                         <include content="Hub_Spotlight_Button_Circle">
@@ -524,7 +524,7 @@
                             <param name="label">Lecture</param>
                             <param name="image">$VAR[Image_FullscreenWidget_PlayButton]</param>
                             <param name="max">260</param>
-                            <param name="card_width">410</param>
+                            <param name="card_width">360</param>
                             <param name="card_bg">330A0A0A</param>
                             <param name="card_icon">FFFFFFFF</param>
                             <param name="card_text">FFFFFFFF</param>
@@ -555,7 +555,7 @@
                         <param name="bordersize">0</param>
                         <param name="left">0</param>
                         <param name="max">310</param>
-                        <param name="card_width">410</param>
+                        <param name="card_width">360</param>
                         <param name="card_bg">330A0A0A</param>
                         <param name="card_icon">FFFFFFFF</param>
                         <param name="card_text">FFFFFFFF</param>
