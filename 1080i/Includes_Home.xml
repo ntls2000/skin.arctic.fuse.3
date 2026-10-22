@@ -6,10 +6,20 @@
         <value>main_fg_100</value>
     </variable>
 
-    <!-- Premium styling suspended after navigation freeze in 3.4.2.22.
-         Setting remains stored for later, but cannot affect the focus UI. -->
+    <!-- Premium is the default, retaining the user-approved LAB 3.4.2.36.
+         Opt-in Normal (original circles/underline) ignores the obsolete saved
+         Spotlight.PremiumButtons key from earlier failed attempts. -->
     <variable name="AF3DEV_SpotlightButtonStyle">
-        <value>Standard (Premium suspendu)</value>
+        <value condition="Skin.HasSetting(Spotlight.NormalButtons)">Normal (boutons d'origine)</value>
+        <value>Premium (boutons arrondis)</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightPlayButtonLabel">
+        <value condition="Skin.HasSetting(Spotlight.NormalButtons)">$VAR[Label_FullscreenWidget_PlayButton]</value>
+        <value>Lecture</value>
+    </variable>
+    <variable name="AF3DEV_SpotlightInfoButtonLabel">
+        <value condition="Skin.HasSetting(Spotlight.NormalButtons)">$VAR[Label_FullscreenWidget_InfoButton]</value>
+        <value>Informations</value>
     </variable>
 
     <variable name="AF3DEV_TabShapeLabel">
