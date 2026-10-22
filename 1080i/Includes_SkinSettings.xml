@@ -20,6 +20,29 @@
             <onclick>ActivateWindow(1115)</onclick>
         </include>
 
+        <!-- Hub transfer is an isolated Python tool: it does NOT copy
+             Spotlight style, Emby trailer service or trailer settings. -->
+        <include content="Settings_Button" description="Save customised hubs to ZIP">
+            <param name="dialog">false</param>
+            <param name="window">skinsettings</param>
+            <param name="baseid">$PARAM[baseid]</param>
+            <param name="id">015</param>
+            <param name="control">button</param>
+            <label>Sauvegarder mes hubs (ZIP)</label>
+            <label2>Copier hubs et widgets vers USB ou reseau</label2>
+            <onclick>RunScript(special://skin/extras/scripts/hub_transfer.py,export)</onclick>
+        </include>
+        <include content="Settings_Button" description="Restore customised hubs from ZIP">
+            <param name="dialog">false</param>
+            <param name="window">skinsettings</param>
+            <param name="baseid">$PARAM[baseid]</param>
+            <param name="id">016</param>
+            <param name="control">button</param>
+            <label>Restaurer mes hubs (ZIP)</label>
+            <label2>Sauvegarde de securite avant importation</label2>
+            <onclick>RunScript(special://skin/extras/scripts/hub_transfer.py,import)</onclick>
+        </include>
+
         <include content="Settings_Button" description="Startup">
             <param name="dialog">false</param>
             <param name="window">skinsettings</param>
