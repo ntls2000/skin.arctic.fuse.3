@@ -7,10 +7,20 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.40`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.41`** |
 | Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.36`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
+
+## Streaming-style custom hubs — DEV 3.4.2.41
+
+**Arctic Fuse 3 DEV 3.4.2.41** adds **14 lightweight Kodi smart playlists** (`extras/hub/streaming/`): 8 for movies (Action/Aventure, Romance, Comedies, Thrillers, Science-Fiction/Fantasy, Horror, Animation, Documentaries) and 6 for TV shows (Action/Aventure, Drama, Comedy, Crime/Mystery, Sci-Fi/Fantasy, Romance). Genre filtering uses Kodi smart playlists over media in the **local Kodi video database**. Movies/series synced from Emby Next Gen can appear automatically; items available *only through dynamic Emby plugin browsing* are NOT necessarily indexed and may be missing. Genre value names depend on the metadata received from Emby; empty genres display no matching titles. The hub backup ZIP can reference these playlists via `special://skin/extras/hub/streaming/XX-....xsp`.
+
+An optional **personal** reorganized hubs archive `ArcticFuse3-DEV-Hubs-Streaming-Genres-20261022.zip` is deliberately **not stored in this public repository** because it contains user-specific Emby identifiers and routes. It was constructed only from the user's supplied backup. Its main layout: Home 9 rows (watch next, recent movies/TV, recommendations, action, romance, comedy, recent releases, collections), Movies 15 rows, Series 10 rows. All 12 previously configured media paths are preserved across the three hubs, while their rows are rearranged or copied into relevant hubs. Kodi's hub importer format remains `ntls2000-af3-hubs-v1`.
+
+**Installation:** update skin 3.4.2.41 using the NTLS2000 Kodi repository, make a backup of existing hubs, then import the separate custom hubs ZIP using **Parametres du skin > Menus > Restaurer mes hubs (ZIP)** and restart Kodi. The importer first saves a dated safety ZIP of the previous hub configuration. Do not import the custom hub ZIP before updating the skin because its new genre paths reference the 14 playlists introduced in 3.4.2.41.
+
+**Safety:** the only changed skin source files are the 14 additive `.xsp` genre playlists; checked-in Spotlight XML, focus/navigation, Premium/Normal selector, hub export/import and Emby-only trailer service `0.4.8` are unchanged. GitHub Actions verifies these files, XML rules, the old stable code and trailer regressions. Visual function and genre availability must still be tested in real Kodi 22.
 
 ## Export / Import de mes hubs — DEV 3.4.2.40
 
@@ -49,12 +59,12 @@ The user validated the LAB's Premium button appearance and arrow offset (65px) o
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.40**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.41**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.40/skin.arctic.fuse.3.dev-3.4.2.40.zip) and choose **Install from ZIP**.
+Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.41/skin.arctic.fuse.3.dev-3.4.2.41.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.40 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.41 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
 
