@@ -555,7 +555,7 @@
                         <param name="bordersize">0</param>
                         <param name="left">0</param>
                         <param name="max">310</param>
-                        <param name="card_width">360</param>
+                        <param name="card_width">320</param>
                         <param name="card_bg">330A0A0A</param>
                         <param name="card_icon">FFFFFFFF</param>
                         <param name="card_text">FFFFFFFF</param>
@@ -568,8 +568,11 @@
                         </include>
                     </include>
 
+                    <!-- Independent Spotlight navigation cue. Remains ID 315,
+                         outside the compact 320px Information card visually;
+                         it is not part of either focusable button. -->
                     <control type="image" id="315">
-                        <left>20</left>
+                        <left>100</left>
                         <width>40</width>
                         <height>40</height>
                         <centertop>50%</centertop>
