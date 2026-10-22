@@ -108,6 +108,20 @@
             <selected>Skin.HasSetting(Spotlight.EnableSlide)</selected>
             <onclick>Skin.ToggleSetting(Spotlight.EnableSlide)</onclick>
         </include>
+        <!-- The layout remains one permanent pair of focusable controls.
+             ReloadSkin re-expands appearance-only conditional includes.
+             Default is approved Premium, Normal is a reversible opt-out. -->
+        <include content="Settings_Button" description="Spotlight Buttons Style">
+            <param name="dialog">false</param>
+            <param name="window">skinsettings</param>
+            <param name="baseid">$PARAM[baseid]</param>
+            <param name="id">014</param>
+            <param name="control">button</param>
+            <label>Style des boutons du Spotlight</label>
+            <label2>$VAR[AF3DEV_SpotlightButtonStyle]</label2>
+            <onclick>Skin.ToggleSetting(Spotlight.NormalButtons)</onclick>
+            <onclick>ReloadSkin()</onclick>
+        </include>
         <include content="Settings_Button" description="Spotlight Trailer Preview">
             <param name="dialog">false</param>
             <param name="window">skinsettings</param>
