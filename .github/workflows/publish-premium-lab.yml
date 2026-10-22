@@ -35,7 +35,7 @@ jobs:
 
           SRC = 'skin.arctic.fuse.3'
           LAB = 'skin.arctic.fuse.3.premium.lab'
-          VERSION = '3.4.2.35'
+          VERSION = '3.4.2.36'
           SERVICE = 'service.skin.arctic.fuse.3.dev.trailers'
           out = Path('/tmp') / f'{LAB}-{VERSION}.zip'
 
@@ -113,7 +113,7 @@ jobs:
           assert hub.count('<control type="image" id="315">') == 1
           left_cue = hub.split('<control type="image" id="314">', 1)[1].split('</control>', 1)[0]
           right_cue = hub.split('<control type="image" id="315">', 1)[1].split('</control>', 1)[0]
-          assert '<left>50</left>' in right_cue, "Right chevron user test offset must be 50"
+          assert '<left>65</left>' in right_cue, "Right chevron user test offset must be 65"
           assert '<width>40</width>' in left_cue and '<width>40</width>' in right_cue
           assert '<height>40</height>' in left_cue and '<height>40</height>' in right_cue
           assert '<centertop>50%</centertop>' in left_cue and '<centertop>50%</centertop>' in right_cue
@@ -175,25 +175,25 @@ jobs:
           print('LAB ZIP:', out)
           print('FILES:', len(files))
           PY
-          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip
-          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip
+          unzip -tq /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip
+          sha256sum /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip
       - name: Release pre-verified standalone lab ZIP
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-premium-lab-3.4.2.35'
-          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip'
+          tag='arctic-fuse-3-premium-lab-3.4.2.36'
+          zip='/tmp/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target lab-premium-spotlight \
-              --title 'Arctic Fuse 3 Premium LAB 3.4.2.35 (isolated experiment)' \
-              --notes 'UNVALIDATED Kodi 22 LAB: test right navigation chevron 315 offset 50 instead of 95, as requested after Kodi screenshot. No other skin source changes from LAB 3.4.2.34. Chevrons remain 40x40 centred, buttons Lecture 360x84 and Informations 320x84, focus IDs 311/312, Emby service 0.4.8 and stable DEV 3.4.2.24 unchanged.'
+              --title 'Arctic Fuse 3 Premium LAB 3.4.2.36 (isolated experiment)' \
+              --notes 'UNVALIDATED Kodi 22 LAB: test right navigation chevron 315 offset 65 instead of 50, as requested by user. No other skin source changes from LAB 3.4.2.35. Chevrons remain 40x40 centred, buttons Lecture 360x84 and Informations 320x84, focus IDs 311/312, Emby service 0.4.8 and stable DEV 3.4.2.24 unchanged.'
           fi
           gh release upload "$tag" "$zip" --clobber
           curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-public-check.zip \
-            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip"
+            "https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip"
           cmp "$zip" /tmp/lab-public-check.zip
           unzip -tq /tmp/lab-public-check.zip
           echo 'PREMIUM LAB release verified byte-for-byte after public download' 
@@ -210,7 +210,7 @@ jobs:
 
           root_dir = Path('kodi-repository')
           lab_id = 'skin.arctic.fuse.3.premium.lab'
-          lab_version = '3.4.2.35'
+          lab_version = '3.4.2.36'
           lab_file = f'{lab_id}-{lab_version}.zip'
           src_zip = Path('/tmp') / lab_file
           lab_dir = root_dir / lab_id
@@ -262,7 +262,7 @@ jobs:
               'Expected stable DEV, trailer service and previous LAB', existing_ids)
           previous_lab = catalog_root.find(f"./addon[@id='{lab_id}']")
           assert previous_lab is not None
-          assert previous_lab.get('version') in ('3.4.2.34', lab_version)
+          assert previous_lab.get('version') in ('3.4.2.35', lab_version)
           catalog_root.remove(previous_lab)
           catalog_root.append(lab_manifest)
           ids = [child.get('id') for child in catalog_root]
@@ -283,14 +283,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.premium.lab/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           git diff --cached --quiet && { echo "Lab catalog was not changed"; exit 1; }
-          git commit -m 'repo(kodi): Premium LAB 3.4.2.35 right chevron left 50 test'
+          git commit -m 'repo(kodi): Premium LAB 3.4.2.36 right chevron left 65 test'
           git push origin HEAD:kodi-repo
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip > /tmp/git-stored-lab.zip
-          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip > /tmp/git-stored-lab.zip
+          cmp /tmp/git-stored-lab.zip /tmp/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip
           unzip -tq /tmp/git-stored-lab.zip
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 \
             --output /tmp/lab-repository-download.zip \
-            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.35.zip
+            https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.premium.lab/skin.arctic.fuse.3.premium.lab-3.4.2.36.zip
           cmp /tmp/git-stored-lab.zip /tmp/lab-repository-download.zip
           unzip -tq /tmp/lab-repository-download.zip
           git show HEAD:kodi-repository/addons.xml | grep 'skin.arctic.fuse.3.premium.lab'
