@@ -573,8 +573,8 @@
                          it is not part of either focusable button. -->
                     <control type="image" id="315">
                         <!-- Optical spacing trial: user-requested right chevron
-                             at 95 instead of 135. No other layout changes. -->
-                        <left>95</left>
+                             at 50 instead of 95. No other layout changes. -->
+                        <left>50</left>
                         <width>40</width>
                         <height>40</height>
                         <centertop>50%</centertop>
