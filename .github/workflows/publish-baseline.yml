@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.38"
+          DEV_VER = "3.4.2.39"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -138,6 +138,24 @@ jobs:
           assert hub_xml.count('<param name="card_width">320</param>') == 1
           assert '<width>240</width>' in hub_xml and '<width>385</width>' in hub_xml
           assert '<left>20</left>' in hub_xml and '<left>65</left>' in hub_xml
+          # Regression: each graphic group MUST expand to a single left
+          # coordinate per mode. In DEV 3.4.2.38 the unconditional Info
+          # left=80 survived alongside Premium left=0, creating a gap.
+          graphic_position = original_groups[0]
+          assert graphic_position.find("left") is None, "Conflicting unconditional group left"
+          left_children = graphic_position.findall("include")
+          assert len(left_children) == 2, "Exactly one selected left per style"
+          assert left_children[0].get("content") == "AF3DEV_Spotlight_StandardGraphicOffset"
+          assert left_children[0].get("condition") == "Skin.HasSetting(Spotlight.NormalButtons)"
+          assert left_children[0].findtext("./param[@name='left']") == "$PARAM[left]"
+          assert left_children[1].get("condition") == "!Skin.HasSetting(Spotlight.NormalButtons)"
+          assert left_children[1].text == "AF3DEV_Spotlight_PremiumGraphicOffset"
+          standard_offset = hub_tree.find("./include[@name='AF3DEV_Spotlight_StandardGraphicOffset']")
+          premium_offset = hub_tree.find("./include[@name='AF3DEV_Spotlight_PremiumGraphicOffset']")
+          assert standard_offset is not None and standard_offset.findtext("./definition/left") == "$PARAM[left]"
+          assert premium_offset is not None and premium_offset.findtext("left") == "0"
+          assert skin_calls[0].findtext("./param[@name='left']") is None, "Play must retain default left=0"
+          assert skin_calls[1].findtext("./param[@name='left']") == "80", "Original info has left=80"
           assert '<include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardPlayGroupWidth</include>' in hub_xml
           assert '<include condition="!Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_PremiumPlayGroupWidth</include>' in hub_xml
           assert '<include condition="Skin.HasSetting(Spotlight.NormalButtons)">AF3DEV_Spotlight_StandardRightArrowOffset</include>' in hub_xml
@@ -188,22 +206,19 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          prior_commit = "68fc5ed5f77eb9a31ff6b5cd3158814cba505646"
-          expected_paths = [
-              "1080i/Includes_Home.xml", "1080i/Includes_Hubs.xml",
-              "1080i/Includes_SkinSettings.xml",
-          ]
+          # DEV 3.4.2.39 changes one Spotlight XML file only.
+          prior_commit = "a0802cd6f57fa7c592968dff5bc759563e87180c"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
-          assert source_changes == expected_paths, (
-              "DEV 3.4.2.38 must change only three Spotlight/style XML files",
+          assert source_changes == ["1080i/Includes_Hubs.xml"], (
+              "DEV 3.4.2.39 must change only Spotlight graphic offsets",
               source_changes)
           for name in ("addon.xml", "service.py"):
               name = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers/" + name
               assert subprocess.check_output(["git","show",prior_commit+":"+name]) == (
                      subprocess.check_output(["git","show",SOURCE_REF+":"+name])), "Emby service changed"
-          print("Premium/Normal selector PASSED: one permanent 311/312 focus pair, four graphical states, 240/385 widths, 20/65 chevrons")
+          print("Premium/Normal selector PASSED: one permanent 311/312 pair; no double left in info graphic group; Normal 80 vs Premium 0 offsets")
           print("Normal visuals identical to original 3.4.2.24; Premium visuals identical to user-approved LAB 3.4.2.36")
           print("Skin setting PASSED: Premium default, reversible Normal mode, ReloadSkin; AutoTrailer separate")
           assert "shortcuts/skinvariables-generator.json" in entries
@@ -514,10 +529,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): 3.4.2.38 reversible Normal/Premium Spotlight styles, frozen Emby trailers 0.4.8"
+            git commit -m "fix(kodi): 3.4.2.39 align Premium Info adjacent to Lecture, preserve Normal and Emby 0.4.8"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.38.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.39.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
