@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.40"
+          DEV_VER = "3.4.2.41"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,20 +206,55 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # Protect the already user-validated 3.4.2.39 controls and trailers:
-          # this release may ONLY add the hub tool and its two settings entries.
-          prior_commit = "e592736f0cf04ffb6a02e642c7bea6f275130346"
+          # Only additive genre playlists: preserve the validated 3.4.2.40
+          # Spotlight, menu control, backup/import code, and Emby 0.4.8 intact.
+          prior_commit = "ff408692340a67d0959ab5bb2bd0cba4c46824d9"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
-          assert source_changes == [
-              "1080i/Includes_SkinSettings.xml",
-              "extras/scripts/hub_transfer.py",
-          ], ("3.4.2.40 must only introduce hub transfer", source_changes)
-          for unchanged in ("1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml"):
-              expected = subprocess.check_output(["git", "show", prior_commit + ":" + unchanged])
-              assert entries[unchanged] == expected.replace(SRC_ID.encode(), DEV_ID.encode()), (
-                  "User-validated Spotlight appearance must remain unchanged", unchanged)
+          expected_genres = [
+              "extras/hub/streaming/01-Films-Action.xsp",
+              "extras/hub/streaming/02-Films-Romance.xsp",
+              "extras/hub/streaming/03-Films-Comedies.xsp",
+              "extras/hub/streaming/04-Films-Thrillers.xsp",
+              "extras/hub/streaming/05-Films-ScienceFiction.xsp",
+              "extras/hub/streaming/06-Films-Horreur.xsp",
+              "extras/hub/streaming/07-Films-Animation.xsp",
+              "extras/hub/streaming/08-Films-Documentaires.xsp",
+              "extras/hub/streaming/09-Series-Action.xsp",
+              "extras/hub/streaming/10-Series-Dramatiques.xsp",
+              "extras/hub/streaming/11-Series-Comedies.xsp",
+              "extras/hub/streaming/12-Series-Policieres.xsp",
+              "extras/hub/streaming/13-Series-ScienceFiction.xsp",
+              "extras/hub/streaming/14-Series-Romance.xsp",
+          ]
+          assert source_changes == expected_genres, (
+              "DEV 3.4.2.41 may only add 14 genre playlists", source_changes)
+          for unchanged in (
+              "1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml",
+              "1080i/Includes_SkinSettings.xml", "extras/scripts/hub_transfer.py",
+          ):
+              baseline = subprocess.check_output(["git", "show", prior_commit + ":" + unchanged])
+              assert entries[unchanged] == baseline.replace(SRC_ID.encode(), DEV_ID.encode()), (
+                  "Validated DEV source modified", unchanged)
+          movie_count = show_count = 0
+          for xsp in expected_genres:
+              playlist = ET.fromstring(entries[xsp])
+              assert playlist.tag == "smartplaylist"
+              if xsp.split("/")[-1].startswith(("01-","02-","03-","04-","05-","06-","07-","08-")):
+                  assert playlist.get("type") == "movies"
+                  movie_count += 1
+              else:
+                  assert playlist.get("type") == "tvshows"
+                  show_count += 1
+              rule = playlist.find("rule")
+              assert rule is not None and rule.get("field") == "genre"
+              assert rule.get("operator") == "contains"
+              assert len(rule.findall("value")) >= 1
+              assert playlist.findtext("limit") == "60"
+              assert playlist.findtext("./order") == "dateadded"
+          assert (movie_count, show_count) == (8, 6)
+          print("STREAMING GENRE ROWS PASSED: 8 movie / 6 TV dynamic XSP, preserves DEV 3.4.2.40 Spotlight and hubs importer")
           assert '<label>Sauvegarder mes hubs (ZIP)</label>' in setting_source
           assert '<label>Restaurer mes hubs (ZIP)</label>' in setting_source
           assert 'RunScript(special://skin/extras/scripts/hub_transfer.py,export)' in setting_source
@@ -614,10 +649,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): 3.4.2.40 portable Android TV hub backup/restore; unchanged validated trailers and buttons"
+            git commit -m "feat(kodi): DEV 3.4.2.41 14 additive Netflix-style genre smart playlists, Emby service frozen"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.40.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.41.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
