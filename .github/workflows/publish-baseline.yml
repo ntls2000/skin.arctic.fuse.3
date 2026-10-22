@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.39"
+          DEV_VER = "3.4.2.40"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,14 +206,99 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # DEV 3.4.2.39 changes one Spotlight XML file only.
-          prior_commit = "a0802cd6f57fa7c592968dff5bc759563e87180c"
+          # Protect the already user-validated 3.4.2.39 controls and trailers:
+          # this release may ONLY add the hub tool and its two settings entries.
+          prior_commit = "e592736f0cf04ffb6a02e642c7bea6f275130346"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
-          assert source_changes == ["1080i/Includes_Hubs.xml"], (
-              "DEV 3.4.2.39 must change only Spotlight graphic offsets",
-              source_changes)
+          assert source_changes == [
+              "1080i/Includes_SkinSettings.xml",
+              "extras/scripts/hub_transfer.py",
+          ], ("3.4.2.40 must only introduce hub transfer", source_changes)
+          for unchanged in ("1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml"):
+              expected = subprocess.check_output(["git", "show", prior_commit + ":" + unchanged])
+              assert entries[unchanged] == expected.replace(SRC_ID.encode(), DEV_ID.encode()), (
+                  "User-validated Spotlight appearance must remain unchanged", unchanged)
+          assert '<label>Sauvegarder mes hubs (ZIP)</label>' in setting_source
+          assert '<label>Restaurer mes hubs (ZIP)</label>' in setting_source
+          assert 'RunScript(special://skin/extras/scripts/hub_transfer.py,export)' in setting_source
+          assert 'RunScript(special://skin/extras/scripts/hub_transfer.py,import)' in setting_source
+          hub_tool = entries["extras/scripts/hub_transfer.py"]
+          compile(hub_tool, "hub_transfer.py", "exec")
+          assert b'SKIN_ID = "skin.arctic.fuse.3.dev"' in hub_tool
+          assert b'FORMAT = "ntls2000-af3-hubs-v1"' in hub_tool
+          # Self-contained runtime-independent ZIP / restore regression using
+          # temporary fake Kodi addon_data and mock kodi imports.
+          import sys as hsys, types as htypes, tempfile as htemp, os as hos, json as hjson
+          from pathlib import Path as HPath
+          from zipfile import ZipFile as HZip, ZIP_STORED as HStored
+          previous_modules = {name: hsys.modules.get(name) for name in ("xbmc","xbmcgui","xbmcvfs")}
+          try:
+              for name in previous_modules:
+                  hsys.modules[name] = htypes.ModuleType(name)
+              safe_ns = {"__name__": "af3_backup_test"}
+              exec(compile(hub_tool, "hub_transfer.py", "exec"), safe_ns)
+              assert safe_ns["SKIN_ID"] == DEV_ID
+              with htemp.TemporaryDirectory() as folder:
+                  node = HPath(folder) / "script.skinvariables" / "nodes" / DEV_ID
+                  node.mkdir(parents=True)
+                  (node / "skinvariables-shortcut-home.json").write_text(
+                      hjson.dumps([{"label":"Mes films","path":"plugin://movie"}]), encoding="utf-8")
+                  settings_path = HPath(folder) / DEV_ID / "settings.xml"
+                  settings_path.parent.mkdir(parents=True)
+                  settings_path.write_text(
+                      '<settings version="2"><setting id="HomeSwitcher.1101.Name">Films</setting>'
+                      '<setting id="Spotlight.AutoTrailer">true</setting>'
+                      '<setting id="Spotlight.NormalButtons">true</setting>'
+                      '<setting id="Emby.Private">keep_local</setting></settings>',
+                      encoding="utf-8")
+                  exported = safe_ns["_gather"](folder)
+                  assert len(exported) == 2
+                  assert "hub_settings.xml" in exported
+                  assert b"Spotlight.AutoTrailer" not in exported["hub_settings.xml"]
+                  assert b"Emby.Private" not in exported["hub_settings.xml"]
+                  backup = HPath(folder) / "hubs.zip"
+                  safe_ns["_make_zip"](exported, backup)
+                  parsed = safe_ns["_read_zip"](backup)
+                  assert parsed == exported
+                  (node / "skinvariables-shortcut-home.json").write_text("[]", encoding="utf-8")
+                  settings_path.write_text(
+                      '<settings version="2"><setting id="HomeSwitcher.1101.Name">Autre</setting>'
+                      '<setting id="Spotlight.AutoTrailer">false</setting>'
+                      '<setting id="Spotlight.NormalButtons">false</setting>'
+                      '<setting id="Emby.Private">original_private</setting></settings>',
+                      encoding="utf-8")
+                  safe_ns["_replace_data"](folder, parsed)
+                  assert "Mes films" in (node / "skinvariables-shortcut-home.json").read_text(encoding="utf-8")
+                  merged = {e.get("id"):e.text for e in ET.parse(settings_path).getroot()}
+                  assert merged["HomeSwitcher.1101.Name"] == "Films"
+                  assert merged["Spotlight.AutoTrailer"] == "false"
+                  assert merged["Spotlight.NormalButtons"] == "false"
+                  assert merged["Emby.Private"] == "original_private"
+                  try:
+                      safe_ns["_validate_payload"]({"nodes/../outside.json": b"{}"})
+                      raise AssertionError("ZIP path traversal was not rejected")
+                  except ValueError:
+                      pass
+                  forged = HPath(folder) / "forged.zip"
+                  with HZip(forged, "w", HStored) as z:
+                      z.writestr("manifest.json", hjson.dumps({
+                          "skin_id":DEV_ID, "format":"ntls2000-af3-hubs-v1",
+                          "files":{"nodes/" + DEV_ID + "/data.json":"bad"}}))
+                      z.writestr("nodes/" + DEV_ID + "/data.json", "{}")
+                  try:
+                      safe_ns["_read_zip"](forged)
+                      raise AssertionError("Forged checksum not rejected")
+                  except ValueError:
+                      pass
+          finally:
+              for name, original in previous_modules.items():
+                  if original is None:
+                      hsys.modules.pop(name, None)
+                  else:
+                      hsys.modules[name] = original
+          print("Hub backup/restore PASSED: ZIP, SHA, profile scope, selective hub keys, malicious archives, Emby/trailer/style preserved")
           for name in ("addon.xml", "service.py"):
               name = "kodi-dev-addons/service.skin.arctic.fuse.3.dev.trailers/" + name
               assert subprocess.check_output(["git","show",prior_commit+":"+name]) == (
@@ -529,10 +614,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): 3.4.2.39 align Premium Info adjacent to Lecture, preserve Normal and Emby 0.4.8"
+            git commit -m "feat(kodi): 3.4.2.40 portable Android TV hub backup/restore; unchanged validated trailers and buttons"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.39.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.40.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
