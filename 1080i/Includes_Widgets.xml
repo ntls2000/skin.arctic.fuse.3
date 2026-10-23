@@ -487,6 +487,17 @@
         </include>
     </include>
 
+    <!-- Matching placeholder while Emby is loading CineVitrine shelves. -->
+    <include name="Widget_Busy_BlankItem_CineVitrine">
+        <include content="Widget_Busy_BlankItem">
+            <param name="item_w">view_cinevitrine_item_w</param>
+            <param name="item_h">view_cinevitrine_item_h</param>
+            <param name="itemlayout_w">view_cinevitrine_itemlayout_w</param>
+            <param name="itemlayout_h">view_poster_itemlayout_h</param>
+            <param name="colordiffuse">$PARAM[colordiffuse]</param>
+        </include>
+    </include>
+
     <include name="Widget_Busy_BlankItem_Placard">
         <include content="Widget_Busy_BlankItem">
             <param name="item_w">view_placard_item_w</param>
@@ -611,6 +622,13 @@
         <include>Widget_Busy_BlankItem_Circle</include>
         <include>Widget_Busy_BlankItem_Circle</include>
     </include>
+    <include name="Widget_Busy_BlankItems__List_CineVitrine_Row">
+        <include>Widget_Busy_BlankItem_CineVitrine</include>
+        <include>Widget_Busy_BlankItem_CineVitrine</include>
+        <include>Widget_Busy_BlankItem_CineVitrine</include>
+        <include>Widget_Busy_BlankItem_CineVitrine</include>
+        <include>Widget_Busy_BlankItem_CineVitrine</include>
+    </include>
     <include name="Widget_Busy_BlankItems__List_Card_Row">
         <include>Widget_Busy_BlankItem_Card</include>
         <include>Widget_Busy_BlankItem_Poster</include>
@@ -646,6 +664,9 @@
     </include>
     <include name="Widget_Busy_Spinner_Height__List_Board_Row">
         <height>view_poster_item_h</height>
+    </include>
+    <include name="Widget_Busy_Spinner_Height__List_CineVitrine_Row">
+        <height>view_cinevitrine_item_h</height>
     </include>
     <include name="Widget_Busy_Spinner_Height__List_Card_Row">
         <height>view_poster_item_h</height>

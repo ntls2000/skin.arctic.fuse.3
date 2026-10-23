@@ -122,6 +122,17 @@
     <constant name="view_square_item_w">296</constant>
     <constant name="-view_square_item_w">-296</constant>
 
+
+    <!-- DEV CineVitrine: 4:3 fanart tiles inside standard 350px widget rows.
+         Equal 20px side padding preserves existing focus and scroll geometry. -->
+    <constant name="view_cinevitrine_item_w">400</constant>
+    <constant name="-view_cinevitrine_item_w">-400</constant>
+    <constant name="view_cinevitrine_item_h">300</constant>
+    <constant name="-view_cinevitrine_item_h">-300</constant>
+    <constant name="view_cinevitrine_itemlayout_w">440</constant>
+    <constant name="-view_cinevitrine_itemlayout_w">-440</constant>
+    <constant name="view_cinevitrine_movement">4</constant>
+
     <constant name="view_card_item_w">731.42</constant>
     <constant name="-view_card_item_w">-731.42</constant>
     <constant name="view_card_itemlayout_w">771.42</constant>

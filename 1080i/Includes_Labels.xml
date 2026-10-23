@@ -1247,6 +1247,7 @@
         <value condition="String.IsEqual(Container(22001).ListItem.Property(widget_style),Banner)">$LOCALIZE[20020]</value>
         <value condition="String.IsEqual(Container(22001).ListItem.Property(widget_style),Card)">$LOCALIZE[31423]</value>
         <value condition="String.IsEqual(Container(22001).ListItem.Property(widget_style),Placard)">$LOCALIZE[31172]</value>
+        <value condition="String.IsEqual(Container(22001).ListItem.Property(widget_style),CineVitrine)">CinéVitrine</value>
         <value>$LOCALIZE[571]</value>
     </variable>
 
