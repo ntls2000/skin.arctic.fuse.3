@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.45"
+          DEV_VER = "3.4.2.46"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,9 +206,18 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # 3.4.2.45 polishes only CineVitrine and CinePanorama artwork.
-          # All menu style options, Spotlight and Emby 0.4.8 are frozen.
+          # DEV 3.4.2.46 is EXACTLY the validated source of DEV 3.4.2.44.
+          # Version increment is necessary because Kodi cannot auto-upgrade
+          # from installed 3.4.2.45 to numerically lower 3.4.2.44.
           prior_commit = "0f3e8b913375121a196d35f4b4f340d069f06bb7"
+          rejected_commit = "0e6eaed11fdba1b67e2efe00c65fbfac981084d9"
+          validated_tree = subprocess.check_output(
+              ["git","rev-parse", prior_commit + "^{tree}"], text=True).strip()
+          current_tree = subprocess.check_output(
+              ["git","rev-parse", SOURCE_REF + "^{tree}"], text=True).strip()
+          assert current_tree == validated_tree, (
+              "ROLLBACK: source tree must be byte-identical to approved 3.4.2.44",
+              current_tree, validated_tree)
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
@@ -228,9 +237,15 @@ jobs:
               "extras/hub/streaming/13-Series-ScienceFiction.xsp",
               "extras/hub/streaming/14-Series-Romance.xsp",
           ]
-          assert source_changes == [
+          assert source_changes == [], (
+              "ROLLBACK source must have zero changed files relative to 3.4.2.44",
+              source_changes)
+          rollback_changes = subprocess.check_output([
+              "git", "diff", "--name-only", rejected_commit, SOURCE_REF
+          ], text=True).splitlines()
+          assert rollback_changes == [
               "1080i/Includes_Layouts.xml", "1080i/Includes_Objects.xml"
-          ], ("3.4.2.45 may refine only the two vignette layout files", source_changes)
+          ], ("Only unwanted 3.4.2.45 visuals may be reverted", rollback_changes)
           for unchanged in (
               "1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml",
               "1080i/Includes_SkinSettings.xml", "extras/scripts/hub_transfer.py",
@@ -282,10 +297,10 @@ jobs:
           assert li.findtext("./definition/include/param[@name='control']") == "$PARAM[control]"
           assert li.find("./definition/include/nested") is not None, "Lost focus-navigation slots"
           assert lv.findtext(".//include[@content='Object_Layout_Image_Rectangle']/param[@name='icon']") == "$VAR[Image_Card_Fanart]"
-          assert lv.find(".//include[@content='Object_ClearLogo_WithShadow']") is None, "CineVitrine duplicates baked-in artwork logo"
+          assert lv.find(".//include[@content='Object_ClearLogo_WithShadow']") is not None, "Approved 3.4.2.44 clearlogo missing"
           assert lv.find(".//include[@content='Object_SelectBox']") is not None
-          assert lv.find(".//control[@type='label']") is None, "CineVitrine must be image only"
-          assert lv.find(".//control[@type='image']/texture[@colordiffuse='DFFFFFFF']") is None
+          assert lv.find(".//control[@type='label']") is not None, "Approved 3.4.2.44 title missing"
+          assert lv.find(".//control[@type='image']/texture[@colordiffuse='DFFFFFFF']") is not None
           assert widgets.find("./include[@name='Widget_Busy_BlankItems__List_CineVitrine_Row']") is not None
           assert widgets.find("./include[@name='Widget_Busy_Spinner_Height__List_CineVitrine_Row']") is not None
           choose = actions.find("./variable[@name='Action_Shortcut_SetWidgetStyle']")
@@ -337,7 +352,7 @@ jobs:
               original = subprocess.check_output(["git", "show", prior_commit + ":" + xsp])
               assert entries[xsp] == original.replace(SRC_ID.encode(), DEV_ID.encode()), (
                   "Existing user genre path changed", xsp)
-          print("CINEVITRINE PASSED: image-only 4:3, no duplicate text, logo or dark footer; Kodi focus, spinner and Emby source unchanged")
+          print("CINEVITRINE ROLLBACK PASSED: exact 3.4.2.44 title, logo, dark fade, focus and Emby art restored")
           # New opt-in CinePanorama must share the same native fixedlist
           # infrastructure and never add focusable controls.
           p = layouts.find("./include[@name='Layout_CinePanorama']")
@@ -354,42 +369,29 @@ jobs:
           assert p.findtext(".//include[@content='Object_Layout_Image_Rectangle']/param[@name='icon']") == "$VAR[Image_Card_Fanart]"
           assert p.find(".//include[@content='Object_SelectBox']") is not None
           assert p.find(".//control[@type='label']") is not None
-          assert p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']") is None, "Old heavy dark band remains"
-          assert p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']").text == "common/poster_fade.png"
-          gradient = p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']")
-          assert gradient is not None
-          gradient_container = next((c for c in p.findall(".//control[@type='image']")
-                                     if c.find("texture") is gradient), None)
-          assert gradient_container is not None and gradient_container.findtext("height") == "110"
+          assert p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']").text == "common/box.png", (
+              "Original 3.4.2.44 CinePanorama dark title band must be restored")
+          assert p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']") is None
+          band = next(c for c in p.findall(".//control[@type='image']")
+                      if c.find("texture") is p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']"))
+          assert band.findtext("height") == "83"
           badge_regular = p.find("./definition/control/control[2]/include[@content='Object_Indicator']")
           badge_focused = p.find("./definition/control/control[2]/include[@content='Object_SelectBox']")
           assert badge_regular is not None and badge_focused is not None
-          assert badge_regular.findtext("./param[@name='centerbottom']") == "36"
-          assert badge_focused.findtext("./param[@name='indicator_centerbottom']") == "36"
-          assert badge_focused.findtext("./param[@name='focus_pad']") == "-1"
-          assert badge_focused.findtext("./param[@name='focus_alpha']") == "E0FFFFFF"
+          assert badge_regular.find("./param[@name='centerbottom']") is None
+          assert badge_focused.find("./param[@name='indicator_centerbottom']") is None
+          assert badge_focused.find("./param[@name='focus_pad']") is None
+          assert badge_focused.find("./param[@name='focus_alpha']") is None
           objects = ET.fromstring(entries["1080i/Includes_Objects.xml"])
-          original_objects = ET.fromstring(subprocess.check_output(
-              ["git", "show", prior_commit + ":1080i/Includes_Objects.xml"]))
           current_indicator = objects.find("./include[@name='Object_Indicator']")
           current_selectbox = objects.find("./include[@name='Object_SelectBox']")
-          original_indicator = original_objects.find("./include[@name='Object_Indicator']")
-          original_selectbox = original_objects.find("./include[@name='Object_SelectBox']")
-          assert all(el is not None for el in (
-              current_indicator, current_selectbox, original_indicator, original_selectbox))
-          assert current_indicator.findtext("./param[@name='centerbottom']") == "0"
-          assert current_indicator.findtext("./definition/control/centerbottom") == "$PARAM[centerbottom]"
-          assert original_indicator.findtext("./definition/control/centerbottom") == "0"
-          assert current_selectbox.findtext("./param[@name='focus_pad']") == "-3"
-          assert current_selectbox.findtext("./param[@name='focus_alpha']") == "FFFFFFFF"
-          assert current_selectbox.findtext("./param[@name='indicator_centerbottom']") == "0"
-          focus_inner = current_selectbox.find(".//include[@content='Dimension_Padding']/param[@name='pad']")
-          assert focus_inner is not None and focus_inner.text == "$PARAM[focus_pad]"
-          assert current_selectbox.find(".//control[@type='image']/colordiffuse").text == "$PARAM[focus_alpha]"
-          assert current_selectbox.find(".//include[@content='Object_Indicator']/param[@name='centerbottom']").text == "$PARAM[indicator_centerbottom]"
-          # Backward-compatible defaults: all other widget styles use original
-          # 0px badge, -3px focus extension and full white highlight.
-          assert original_selectbox.find(".//include[@content='Dimension_Padding']/param[@name='pad']").text == "-3"
+          assert current_indicator is not None and current_selectbox is not None
+          assert current_indicator.find("./param[@name='centerbottom']") is None
+          assert current_indicator.findtext("./definition/control/centerbottom") == "0"
+          assert current_selectbox.find("./param[@name='focus_pad']") is None
+          assert current_selectbox.find("./param[@name='focus_alpha']") is None
+          assert current_selectbox.find("./param[@name='indicator_centerbottom']") is None
+          assert current_selectbox.find(".//include[@content='Dimension_Padding']/param[@name='pad']").text == "-3"
           assert widgets.find("./include[@name='Widget_Busy_BlankItems__List_CinePanorama_Row']") is not None
           assert widgets.find("./include[@name='Widget_Busy_Spinner_Height__List_CinePanorama_Row']") is not None
           assert 'CinéPanorama=CinePanorama' in "".join(choose.itertext())
@@ -398,7 +400,7 @@ jobs:
                      and x.findtext("value") == "List_CinePanorama_Row"
                      for x in rule.findall("rule"))
           # The 14 genre files and user Emby paths have not changed.
-          print("CINEPANORAMA PASSED: smooth transparent footer, 36px-inset watched badge, refined focused outline; other widgets use original defaults")
+          print("CINEPANORAMA ROLLBACK PASSED: exact 3.4.2.44 banner, badge and focus restored")
           print("STREAMING GENRE ROWS PASSED: 8 movie / 6 TV dynamic XSP, preserved from validated 3.4.2.41")
           assert '<label>Sauvegarder mes hubs (ZIP)</label>' in setting_source
           assert '<label>Restaurer mes hubs (ZIP)</label>' in setting_source
@@ -794,10 +796,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "refine(kodi): DEV 3.4.2.45 image-only CineVitrine and polished CinePanorama; Emby and Spotlight frozen"
+            git commit -m "revert(kodi): DEV 3.4.2.46 restores exact approved 3.4.2.44 visuals from rejected 3.4.2.45"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.45.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.46.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
