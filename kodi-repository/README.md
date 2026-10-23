@@ -7,10 +7,16 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.44`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.45`** |
 | Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.36`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
+
+## Vignette polish: image-only CinéVitrine, softer CinéPanorama — DEV 3.4.2.45
+
+DEV **3.4.2.45** keeps the user's selected Emby-backed widgets and fixes four visual details seen in the real Kodi screenshots. **CinéVitrine** now shows just the Emby artwork: redundant text title, separately overlaid clearlogo and old footer fade are removed. Its 400×300px tile geometry and Kodi focus remain identical. **CinéPanorama** keeps its existing 690×240px format and bottom-left title/year, but uses a less dominant, 110px soft `common/poster_fade.png` gradient instead of the previous flat opaque-looking 83px black bar. Its green 64px watched indicator now has a 36px inward bottom-centre offset in both selected and unselected states, avoiding the selected border; the focused outline moves 2px inward (1px extension rather than 3px) and uses a subtly transparent white.
+
+This update edits only `1080i/Includes_Layouts.xml` and `1080i/Includes_Objects.xml`. New optional parameters on the shared indicator/focus includes default to the *exact original* values, leaving Poster, Card, Placard, all other views, the approved Premium/Normal Spotlight and Emby 0.4.8 trailer service unaffected. CineVitrine and CinePanorama remain selectable individually in `Personnaliser les widgets > Style`, and the selector regression from 3.4.2.44 stays fixed. The existing custom hub ZIP may be retained and does **not** need reimporting. GitHub CI verifies the strict two-file diff, the absence of overlay title in Vitrine, the replaced Panorama gradient, focused and unfocused indicator alignment, backward-compatible defaults, menu style command, ZIP importer and trailer service. **Visual Kodi 22 confirmation is still required.**
 
 ## Fix: widget Style menu blocked — DEV 3.4.2.44
 
@@ -85,12 +91,12 @@ The user validated the LAB's Premium button appearance and arrow offset (65px) o
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.44**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.45**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.44/skin.arctic.fuse.3.dev-3.4.2.44.zip) and choose **Install from ZIP**.
+Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.45/skin.arctic.fuse.3.dev-3.4.2.45.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.44 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.45 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
 
