@@ -2107,12 +2107,12 @@
                         <param name="aspectratio">scale</param>
                         <param name="selected">$PARAM[selected]</param>
                     </include>
-                    <!-- Different from centered-logo Card and squarer CineVitrine:
-                         a translucent editorial bottom title strip. -->
+                    <!-- Soft bottom gradient rather than a rectangular black
+                         bar; labels remain legible without hiding the fanart. -->
                     <control type="image">
                         <bottom>0</bottom>
-                        <height>83</height>
-                        <texture border="20" colordiffuse="B8000000">common/box.png</texture>
+                        <height>110</height>
+                        <texture border="20" colordiffuse="BFFFFFFF">common/poster_fade.png</texture>
                     </control>
                     <control type="label">
                         <left>24</left>
@@ -2140,19 +2140,29 @@
                     <include content="Object_ContentBanner" condition="$PARAM[indicator]">
                         <param name="listitem">$PARAM[listitem]</param>
                     </include>
+                    <!-- The green 64px watched badge previously straddled
+                         the bottom focus border. Lift its centre by 36px both
+                         focused and unfocused, leaving a 4px image inset. -->
                     <include condition="!$PARAM[selected]" content="Object_Indicator">
                         <param name="affix">$PARAM[affix]</param>
                         <param name="listitem">$PARAM[listitem]</param>
+                        <param name="centerbottom">36</param>
                     </include>
                     <include content="Object_SelectBox" condition="$PARAM[selected]">
                         <param name="indicator">true</param>
+                        <param name="indicator_centerbottom">36</param>
                         <param name="focusbounce">false</param>
+                        <!-- Less bulky focus: 1px outside instead of 3px,
+                             plus a slightly translucent original thin line. -->
+                        <param name="focus_pad">-1</param>
+                        <param name="focus_alpha">E0FFFFFF</param>
                     </include>
                 </control>
             </control>
         </definition>
     </include>
 
+    
     <include name="Layout_CineVitrine">
         <param name="selected">false</param>
         <param name="diffuse">diffuse/card_w731_h310.png</param>
@@ -2174,27 +2184,9 @@
                         <param name="aspectratio">scale</param>
                         <param name="selected">$PARAM[selected]</param>
                     </include>
-                    <!-- The artwork provides the title logo when Emby has one.
-                         Always keep a readable text fallback for missing logos. -->
-                    <include content="Object_ClearLogo_WithShadow">
-                        <param name="diffuse">$PARAM[diffuse]</param>
-                    </include>
-                    <control type="image">
-                        <bottom>0</bottom>
-                        <height>90</height>
-                        <texture border="20" colordiffuse="DFFFFFFF">common/poster_fade.png</texture>
-                    </control>
-                    <control type="label">
-                        <left>14</left>
-                        <right>14</right>
-                        <bottom>12</bottom>
-                        <height>42</height>
-                        <font>font_mini_bold</font>
-                        <align>left</align>
-                        <aligny>center</aligny>
-                        <textcolor>FFFFFFFF</textcolor>
-                        <label>$INFO[$PARAM[listitem].Label]</label>
-                    </control>
+                    <!-- Image-only vignette, as requested: no redundant
+                         title text, clearlogo, or footer fade. Emby thumbnail
+                         remains untouched; titles live in normal Kodi metadata. -->
                 </control>
                 <control type="group">
                     <include content="Object_ContentBanner" condition="$PARAM[indicator]">
