@@ -7,10 +7,20 @@ Development distribution for **Arctic Fuse 3 DEV (Original)**, based on jurialmu
 | Kodi addon | Addon ID | Version |
 |---|---|---|
 | NTLS2000 Kodi DEV Repository | `repository.ntls2000.kodi.dev` | `0.1.0` |
-| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.41`** |
+| Arctic Fuse 3 DEV (Original) | `skin.arctic.fuse.3.dev` | **`3.4.2.42`** |
 | Arctic Fuse 3 Premium LAB (experimental) | `skin.arctic.fuse.3.premium.lab` | **`3.4.2.36`** |
 
 Source baseline: `omega` commit `1f0b8fd67fa73738ea7f6fe1ff6dd8e3859192fb`. The skin has the upstream visuals and interface features, and a separate addon ID to avoid overwriting `skin.arctic.fuse.3`. The Arctic Splash minimum dependency is `1.0.0`. The trailer service is automatically installed with the DEV skin (v0.4.8); preview itself remains disabled by default.
+
+## CineVitrine 4:3 widget style — DEV 3.4.2.42
+
+**Arctic Fuse 3 DEV 3.4.2.42** adds a ninth, **opt-in** row style named **CinéVitrine** (internal identifier `CineVitrine`). It offers 400×300px 4:3 film/series thumbnails inside the existing 350px Kodi widget-row geometry; artwork uses the skin's own Emby-aware `Image_Card_Fanart` variable (with built-in fallback), centred clearlogo, a bottom fade and a white, readable title. It keeps the native fixedlist, indicators, selection outline and existing keyboard/remote focus/navigation. No additional PNG, Python dependency, Emby endpoint or external art server is required.
+
+**To choose:** open **Personnaliser les widgets** from the skin's **Menus** settings, edit any existing widget row and choose **Style > CinéVitrine**. The option is selectable independently for each Home/Films/Séries row. Existing **Carte** is recommended for new arrivals, **Affiche** for Top 10 and genre posters, and **Placard** for continue-watching. All older styles remain unchanged and revertible.
+
+An optional **personal** test hub ZIP `ArcticFuse3-DEV-Hubs-Test-CineVitrine-20261023.zip` is shared with the user in conversation only, **not committed to GitHub** because it includes private Emby routes. It changes only four **Home** widget style values (Recommandé pour vous, Action & aventure, Histoires d'amour, Comédies pour la soirée) from Poster to CineVitrine while retaining all other widget properties, media paths and saved skin settings. Use **Paramètres du skin > Menus > Restaurer mes hubs (ZIP)** after installing 3.4.2.42, and restart Kodi. The original hub ZIP remains the recommended rollback if the test style or layout is not satisfactory.
+
+CI checks style selection, XML layouts, 4:3 size, generated widget style routing, loading placeholders, unchanged genre playlists, hub export/import, Spotlight focus IDs and frozen Emby trailer service `0.4.8`. **Kodi 22 runtime visuals, artwork fallbacks and TV remote handling still need user confirmation.**
 
 ## Streaming-style custom hubs — DEV 3.4.2.41
 
@@ -59,12 +69,12 @@ The user validated the LAB's Premium button appearance and arrow offset (65px) o
 ## Installation
 
 1. Install [the NTLS2000 repository](https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/repository.ntls2000.kodi.dev/repository.ntls2000.kodi.dev-0.1.0.zip) from **Kodi > Add-ons > Install from ZIP** (once).
-2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.41**.
+2. Go to **Install from repository > NTLS2000 - Kodi DEV Repository > Look and feel > Skins** and choose **Arctic Fuse 3 DEV (Original) 3.4.2.42**.
 3. Existing original skin and installed dependencies remain untouched. Switch skins using **Settings > Interface > Skin**.
 
-Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.41/skin.arctic.fuse.3.dev-3.4.2.41.zip) and choose **Install from ZIP**.
+Alternatively download the Kodi archive from [GitHub Releases](https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/arctic-fuse-3-dev-3.4.2.42/skin.arctic.fuse.3.dev-3.4.2.42.zip) and choose **Install from ZIP**.
 
-**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.41 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
+**IMPORTANT:** Earlier 3.4.2.1 and 3.4.2.2 packages were corrupted *after generation* when checked into Git because the inherited `.gitattributes` applied `* text eol=lf` to ZIP files. This repository now has `*.zip binary`. The 3.4.2.42 archive is checked with Python and GNU unzip in CI, including the Git blob and public download. Avoid the specifically corrupted 3.4.2.1 and 3.4.2.2 archives.
 
 If Kodi previously downloaded the invalid package, exit Kodi and delete only the stale files named `skin.arctic.fuse.3.dev-3.4.2.1.zip` and/or `skin.arctic.fuse.3.dev-3.4.2.2.zip` from `%APPDATA%\Kodi\addons\packages\`, then reopen Kodi. Do not delete the rest of the packages directory or `userdata`.
 
