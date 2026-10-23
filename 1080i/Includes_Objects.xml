@@ -1164,6 +1164,7 @@
     </include>
 
     <include name="Object_Indicator">
+        <param name="centerbottom">0</param>
         <param name="affix" />
         <param name="listitem">ListItem</param>
         <param name="selected">false</param>
@@ -1172,7 +1173,7 @@
         <definition>
             <control type="group">
                 <nested />
-                <centerbottom>0</centerbottom>
+                <centerbottom>$PARAM[centerbottom]</centerbottom>
                 <right>25</right>
                 <width>64</width>
                 <height>64</height>
@@ -2020,6 +2021,9 @@
     </include>
 
     <include name="Object_SelectBox">
+        <param name="focus_pad">-3</param>
+        <param name="focus_alpha">FFFFFFFF</param>
+        <param name="indicator_centerbottom">0</param>
         <param name="indicator">false</param>
         <param name="focusbounce">false</param>
         <param name="shadow">true</param>
@@ -2030,9 +2034,10 @@
                 <include condition="$PARAM[focusbounce]">Animation_FocusBounce</include>
                 <include content="Object_Control">
                     <param name="control">group</param>
-                    <include content="Dimension_Padding"><param name="pad">-3</param></include>
+                    <include content="Dimension_Padding"><param name="pad">$PARAM[focus_pad]</param></include>
                     <include condition="$PARAM[shadow]">Object_Shadow_40</include>
                     <control type="image">
+                        <colordiffuse>$PARAM[focus_alpha]</colordiffuse>
                         <include>Texture_SelectBox_Thin</include>
                     </control>
                 </include>
@@ -2040,6 +2045,7 @@
                     <param name="selected">true</param>
                     <param name="affix">$PARAM[affix]</param>
                     <param name="listitem">$PARAM[listitem]</param>
+                    <param name="centerbottom">$PARAM[indicator_centerbottom]</param>
                     <include content="Object_Left" condition="$PARAM[indicator_reposition]">
                         <param name="left">$PARAM[indicator_left]</param>
                     </include>
