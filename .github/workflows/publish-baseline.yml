@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.43"
+          DEV_VER = "3.4.2.44"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,9 +206,10 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # 3.4.2.43 adds a second, opt-in editorial 2.875:1 widget style.
-          # Frozen: validated Spotlight, trailers 0.4.8, hubs, CineVitrine.
-          prior_commit = "ffbea4ac64f2149d50bd6af4c9be33f6885cb646"
+          # DEV 3.4.2.44 fixes ONLY the widget style selector action,
+          # which inadvertently appended a duplicate style/dialog tail.
+          # Frozen: native widget layouts, menu, Spotlight, Emby 0.4.8.
+          prior_commit = "27f58219e6b049a8ceb8d510bfde3da9fe28c532"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
@@ -228,21 +229,16 @@ jobs:
               "extras/hub/streaming/13-Series-ScienceFiction.xsp",
               "extras/hub/streaming/14-Series-Romance.xsp",
           ]
-          expected_style_paths = [
-              "1080i/Includes_Actions.xml",
-              "1080i/Includes_Constants.xml",
-              "1080i/Includes_Labels.xml",
-              "1080i/Includes_Layouts.xml",
-              "1080i/Includes_Lists.xml",
-              "1080i/Includes_Widgets.xml",
-              "shortcuts/generator/data/setup/widgets_include_row.xml",
-          ]
-          assert source_changes == expected_style_paths, (
-              "DEV 3.4.2.43 must modify only the 7 CinePanorama view/style files",
+          assert source_changes == ["1080i/Includes_Actions.xml"], (
+              "DEV 3.4.2.44 must ONLY fix the widget style selection action",
               source_changes)
           for unchanged in (
               "1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml",
               "1080i/Includes_SkinSettings.xml", "extras/scripts/hub_transfer.py",
+              "1080i/Includes_Constants.xml", "1080i/Includes_Labels.xml",
+              "1080i/Includes_Layouts.xml", "1080i/Includes_Lists.xml",
+              "1080i/Includes_Widgets.xml",
+              "shortcuts/generator/data/setup/widgets_include_row.xml",
           ):
               baseline = subprocess.check_output(["git", "show", prior_commit + ":" + unchanged])
               assert entries[unchanged] == baseline.replace(SRC_ID.encode(), DEV_ID.encode()), (
@@ -296,6 +292,42 @@ jobs:
           chosen_label = labels.find("./variable[@name='Label_Shortcut_Widget_Style']")
           assert choose is not None and 'CinéVitrine=CineVitrine' in "".join(choose.itertext())
           assert chosen_label is not None and any(v.text == 'CinéVitrine' for v in chosen_label.findall("value"))
+          # This catches the actual regression behind the blocked style menu:
+          # a duplicate "CinéVitrine=...&&$LOCALIZE[736]" appended to the
+          # dialog title created a corrupt RunPlugin options command in .43.
+          style_actions = [
+              v.text for v in choose.findall("value")
+              if v.text and v.text.startswith("RunPlugin(")
+          ]
+          assert len(style_actions) == 1
+          action = style_actions[0]
+          assert action.endswith(")")
+          action_parts = action[len("RunPlugin("):-1].split("&&")
+          assert len(action_parts) == 5, (
+              "Style selection RunPlugin must have URL, key, options, heading, confirm",
+              action_parts)
+          url, key, choices, heading, require_confirm = action_parts
+          assert url.endswith("&func=do_edit")
+          assert key == "widget_style"
+          expected_options = (
+              ("$LOCALIZE[20021]", "Poster"),
+              ("$LOCALIZE[31045]", "Landscape"),
+              ("$LOCALIZE[31320]", "Square"),
+              ("$LOCALIZE[31424]", "Board"),
+              ("$LOCALIZE[31161]", "Flyer"),
+              ("$LOCALIZE[31431]", "Circle"),
+              ("$LOCALIZE[31423]", "Card"),
+              ("$LOCALIZE[31172]", "Placard"),
+              ("CinéVitrine", "CineVitrine"),
+              ("CinéPanorama", "CinePanorama"),
+          )
+          assert choices.split("&") == [label + "=" + value for label, value in expected_options], (
+              "Corrupted or duplicated style choices", choices)
+          assert heading == "$LOCALIZE[736]" and require_confirm == "True", (
+              "Broken style selector title/tail", heading, require_confirm)
+          assert action.count("CinéVitrine=CineVitrine") == 1
+          assert action.count("CinéPanorama=CinePanorama") == 1
+          print("WIDGET STYLE ACTION PASSED: 10 unique options, exact 5 segments, normal dialog title; fixes blocked Style menu")
           rule = generator.find("./rules[@name='widget_include']")
           assert rule is not None and any(
               x.findtext("condition") == "{item_widget_style}==CineVitrine"
@@ -727,10 +759,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): DEV 3.4.2.43 opt-in CinePanorama editorial shelf; validated Spotlight, CineVitrine and Emby frozen"
+            git commit -m "fix(kodi): DEV 3.4.2.44 restore widget style selector, preserve CineVitrine/CinePanorama, Emby and Spotlight"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.43.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.44.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
