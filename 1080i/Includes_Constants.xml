@@ -125,6 +125,15 @@
 
     <!-- DEV CineVitrine: 4:3 fanart tiles inside standard 350px widget rows.
          Equal 20px side padding preserves existing focus and scroll geometry. -->
+    <!-- DEV CinePanorama: extra-wide 23:8.4 editorial fanart cards -->
+    <constant name="view_cinepanorama_item_w">690</constant>
+    <constant name="-view_cinepanorama_item_w">-690</constant>
+    <constant name="view_cinepanorama_item_h">240</constant>
+    <constant name="-view_cinepanorama_item_h">-240</constant>
+    <constant name="view_cinepanorama_itemlayout_w">730</constant>
+    <constant name="-view_cinepanorama_itemlayout_w">-730</constant>
+    <constant name="view_cinepanorama_movement">3</constant>
+
     <constant name="view_cinevitrine_item_w">400</constant>
     <constant name="-view_cinevitrine_item_w">-400</constant>
     <constant name="view_cinevitrine_item_h">300</constant>

@@ -25,6 +25,10 @@
             <value>List_Flyer_Row</value>
         </rule>
         <rule>
+            <condition>{item_widget_style}==CinePanorama</condition>
+            <value>List_CinePanorama_Row</value>
+        </rule>
+        <rule>
             <condition>{item_widget_style}==CineVitrine</condition>
             <value>List_CineVitrine_Row</value>
         </rule>
