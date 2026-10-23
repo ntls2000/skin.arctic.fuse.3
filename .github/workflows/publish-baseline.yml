@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.44"
+          DEV_VER = "3.4.2.45"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,10 +206,9 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # DEV 3.4.2.44 fixes ONLY the widget style selector action,
-          # which inadvertently appended a duplicate style/dialog tail.
-          # Frozen: native widget layouts, menu, Spotlight, Emby 0.4.8.
-          prior_commit = "27f58219e6b049a8ceb8d510bfde3da9fe28c532"
+          # 3.4.2.45 polishes only CineVitrine and CinePanorama artwork.
+          # All menu style options, Spotlight and Emby 0.4.8 are frozen.
+          prior_commit = "0f3e8b913375121a196d35f4b4f340d069f06bb7"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
@@ -229,14 +228,14 @@ jobs:
               "extras/hub/streaming/13-Series-ScienceFiction.xsp",
               "extras/hub/streaming/14-Series-Romance.xsp",
           ]
-          assert source_changes == ["1080i/Includes_Actions.xml"], (
-              "DEV 3.4.2.44 must ONLY fix the widget style selection action",
-              source_changes)
+          assert source_changes == [
+              "1080i/Includes_Layouts.xml", "1080i/Includes_Objects.xml"
+          ], ("3.4.2.45 may refine only the two vignette layout files", source_changes)
           for unchanged in (
               "1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml",
               "1080i/Includes_SkinSettings.xml", "extras/scripts/hub_transfer.py",
               "1080i/Includes_Constants.xml", "1080i/Includes_Labels.xml",
-              "1080i/Includes_Layouts.xml", "1080i/Includes_Lists.xml",
+              "1080i/Includes_Actions.xml", "1080i/Includes_Lists.xml",
               "1080i/Includes_Widgets.xml",
               "shortcuts/generator/data/setup/widgets_include_row.xml",
           ):
@@ -283,9 +282,10 @@ jobs:
           assert li.findtext("./definition/include/param[@name='control']") == "$PARAM[control]"
           assert li.find("./definition/include/nested") is not None, "Lost focus-navigation slots"
           assert lv.findtext(".//include[@content='Object_Layout_Image_Rectangle']/param[@name='icon']") == "$VAR[Image_Card_Fanart]"
-          assert lv.find(".//include[@content='Object_ClearLogo_WithShadow']") is not None
+          assert lv.find(".//include[@content='Object_ClearLogo_WithShadow']") is None, "CineVitrine duplicates baked-in artwork logo"
           assert lv.find(".//include[@content='Object_SelectBox']") is not None
-          assert lv.find(".//control[@type='label']") is not None
+          assert lv.find(".//control[@type='label']") is None, "CineVitrine must be image only"
+          assert lv.find(".//control[@type='image']/texture[@colordiffuse='DFFFFFFF']") is None
           assert widgets.find("./include[@name='Widget_Busy_BlankItems__List_CineVitrine_Row']") is not None
           assert widgets.find("./include[@name='Widget_Busy_Spinner_Height__List_CineVitrine_Row']") is not None
           choose = actions.find("./variable[@name='Action_Shortcut_SetWidgetStyle']")
@@ -337,7 +337,7 @@ jobs:
               original = subprocess.check_output(["git", "show", prior_commit + ":" + xsp])
               assert entries[xsp] == original.replace(SRC_ID.encode(), DEV_ID.encode()), (
                   "Existing user genre path changed", xsp)
-          print("CINEVITRINE PASSED: original selectable 4:3 layout, labels, focus, spinner and Emby widgets preserved")
+          print("CINEVITRINE PASSED: image-only 4:3, no duplicate text, logo or dark footer; Kodi focus, spinner and Emby source unchanged")
           # New opt-in CinePanorama must share the same native fixedlist
           # infrastructure and never add focusable controls.
           p = layouts.find("./include[@name='Layout_CinePanorama']")
@@ -354,7 +354,38 @@ jobs:
           assert p.findtext(".//include[@content='Object_Layout_Image_Rectangle']/param[@name='icon']") == "$VAR[Image_Card_Fanart]"
           assert p.find(".//include[@content='Object_SelectBox']") is not None
           assert p.find(".//control[@type='label']") is not None
-          assert p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']") is not None
+          assert p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']") is None, "Old heavy dark band remains"
+          assert p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']").text == "common/poster_fade.png"
+          assert p.findtext(".//control[@type='image'][texture[@colordiffuse='BFFFFFFF']]/height") == "110"
+          badge_regular = p.find("./definition/control/control[2]/include[@content='Object_Indicator']")
+          badge_focused = p.find("./definition/control/control[2]/include[@content='Object_SelectBox']")
+          assert badge_regular is not None and badge_focused is not None
+          assert badge_regular.findtext("./param[@name='centerbottom']") == "36"
+          assert badge_focused.findtext("./param[@name='indicator_centerbottom']") == "36"
+          assert badge_focused.findtext("./param[@name='focus_pad']") == "-1"
+          assert badge_focused.findtext("./param[@name='focus_alpha']") == "E0FFFFFF"
+          objects = ET.fromstring(entries["1080i/Includes_Objects.xml"])
+          original_objects = ET.fromstring(subprocess.check_output(
+              ["git", "show", prior_commit + ":1080i/Includes_Objects.xml"]))
+          current_indicator = objects.find("./include[@name='Object_Indicator']")
+          current_selectbox = objects.find("./include[@name='Object_SelectBox']")
+          original_indicator = original_objects.find("./include[@name='Object_Indicator']")
+          original_selectbox = original_objects.find("./include[@name='Object_SelectBox']")
+          assert all(el is not None for el in (
+              current_indicator, current_selectbox, original_indicator, original_selectbox))
+          assert current_indicator.findtext("./param[@name='centerbottom']") == "0"
+          assert current_indicator.findtext("./definition/control/centerbottom") == "$PARAM[centerbottom]"
+          assert original_indicator.findtext("./definition/control/centerbottom") == "0"
+          assert current_selectbox.findtext("./param[@name='focus_pad']") == "-3"
+          assert current_selectbox.findtext("./param[@name='focus_alpha']") == "FFFFFFFF"
+          assert current_selectbox.findtext("./param[@name='indicator_centerbottom']") == "0"
+          focus_inner = current_selectbox.find(".//include[@content='Dimension_Padding']/param[@name='pad']")
+          assert focus_inner is not None and focus_inner.text == "$PARAM[focus_pad]"
+          assert current_selectbox.find(".//control[@type='image']/colordiffuse").text == "$PARAM[focus_alpha]"
+          assert current_selectbox.find(".//include[@content='Object_Indicator']/param[@name='centerbottom']").text == "$PARAM[indicator_centerbottom]"
+          # Backward-compatible defaults: all other widget styles use original
+          # 0px badge, -3px focus extension and full white highlight.
+          assert original_selectbox.find(".//include[@content='Dimension_Padding']/param[@name='pad']").text == "-3"
           assert widgets.find("./include[@name='Widget_Busy_BlankItems__List_CinePanorama_Row']") is not None
           assert widgets.find("./include[@name='Widget_Busy_Spinner_Height__List_CinePanorama_Row']") is not None
           assert 'CinéPanorama=CinePanorama' in "".join(choose.itertext())
@@ -363,7 +394,7 @@ jobs:
                      and x.findtext("value") == "List_CinePanorama_Row"
                      for x in rule.findall("rule"))
           # The 14 genre files and user Emby paths have not changed.
-          print("CINEPANORAMA PASSED: selectable 690x240 editorial art, native focus, source unchanged, busy placeholders, all existing styles retained")
+          print("CINEPANORAMA PASSED: smooth transparent footer, 36px-inset watched badge, refined focused outline; other widgets use original defaults")
           print("STREAMING GENRE ROWS PASSED: 8 movie / 6 TV dynamic XSP, preserved from validated 3.4.2.41")
           assert '<label>Sauvegarder mes hubs (ZIP)</label>' in setting_source
           assert '<label>Restaurer mes hubs (ZIP)</label>' in setting_source
@@ -759,10 +790,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "fix(kodi): DEV 3.4.2.44 restore widget style selector, preserve CineVitrine/CinePanorama, Emby and Spotlight"
+            git commit -m "refine(kodi): DEV 3.4.2.45 image-only CineVitrine and polished CinePanorama; Emby and Spotlight frozen"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.44.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.45.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
