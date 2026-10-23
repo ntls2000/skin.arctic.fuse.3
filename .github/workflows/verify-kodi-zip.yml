@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          name='skin.arctic.fuse.3.dev-3.4.2.44.zip'
+          name='skin.arctic.fuse.3.dev-3.4.2.45.zip'
           local_file="kodi-repository/skin.arctic.fuse.3.dev/$name"
           source_url="https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.dev/$name"
           echo "Local file:"
@@ -45,15 +45,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-dev-3.4.2.44'
-          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.44.zip'
+          tag='arctic-fuse-3-dev-3.4.2.45'
+          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.45.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target kodi-repo \
-              --title 'Arctic Fuse 3 DEV 3.4.2.44 (Kodi installer)' \
-              --notes 'Arctic Fuse 3 DEV 3.4.2.44 fixes widget Style selection failing in 3.4.2.43. Root cause: the RunPlugin(do_edit widget_style) string accidentally contained a duplicated CineVitrine option and trailing dialog parameters after the heading. The corrected action has exactly 10 unique style choices (eight original and CineVitrine / CinePanorama), correct dialog title and boolean confirmation; strict CI parses and verifies all five argument groups. Only 1080i/Includes_Actions.xml changed. All 14 genre playlists, user hub shortcuts and WebDAV-compatible hub backups, CineVitrine / CinePanorama layouts, approved Premium/Normal Spotlight focus/buttons and Emby trailer service 0.4.8 remain unchanged. GitHub regression and public ZIP verification passed. Live Kodi 22 selector behavior needs confirmation.'
+              --title 'Arctic Fuse 3 DEV 3.4.2.45 (Kodi installer)' \
+              --notes 'Arctic Fuse 3 DEV 3.4.2.45 refines the two optional CineVitrine / CinePanorama widget styles. CineVitrine becomes image-only with no repeated title, clearlogo or footer fade, preserving raw Emby artwork. CinePanorama replaces its heavy solid dark title band with a soft bottom gradient; the green watched badge is moved 36px inside the tile and its focused outline is subtler. Both tile formats and all other widget styles are unchanged. Reusable indicator/focus controls retain default values so non-Panorama layouts retain original styling. No custom hubs reimport needed. Emby trailer companion 0.4.8, Spotlight Premium/Normal focus/buttons, user widget paths, menu style selector, 14 genre playlists and ZIP hub backup/restore remain frozen. Automated XML, format, native focus, Emby and hub-import regression tests passed. Kodi 22 live rendering still awaits confirmation.'
           fi
           gh release upload "$tag" "$asset" --clobber
-          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.44.zip"
+          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.45.zip"
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/release-skin.zip --write-out 'release_http=%{http_code} release_bytes=%{size_download}\n' "$url"
           cmp "$asset" /tmp/release-skin.zip
           unzip -tq /tmp/release-skin.zip
