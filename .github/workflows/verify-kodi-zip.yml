@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          name='skin.arctic.fuse.3.dev-3.4.2.42.zip'
+          name='skin.arctic.fuse.3.dev-3.4.2.43.zip'
           local_file="kodi-repository/skin.arctic.fuse.3.dev/$name"
           source_url="https://raw.githubusercontent.com/ntls2000/skin.arctic.fuse.3/kodi-repo/kodi-repository/skin.arctic.fuse.3.dev/$name"
           echo "Local file:"
@@ -45,15 +45,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag='arctic-fuse-3-dev-3.4.2.42'
-          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.42.zip'
+          tag='arctic-fuse-3-dev-3.4.2.43'
+          asset='kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.43.zip'
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target kodi-repo \
-              --title 'Arctic Fuse 3 DEV 3.4.2.42 (Kodi installer)' \
-              --notes 'Arctic Fuse 3 DEV 3.4.2.42 introduces CineVitrine, an opt-in 4:3 fanart and clearlogo widget style with readable title footer and subtle Kodi focus. Choose Style > CineVitrine when configuring an individual Home, Films or Series widget, or import a separate optional test-hubs ZIP. Card for new arrivals, Poster for Top 10, Placard for Continue Watching remain unchanged. Only seven XML/style generator files are modified; validated Premium/Normal Spotlight controls and focus, all Emby trailer logic and companion service 0.4.8, hub ZIP backup/restore, and 14 genre smart playlists remain intact. Automated XML and generator checks, Emby and hub import regressions, ZIP integrity tests passed. Requires actual Kodi 22 visual confirmation for artwork, focus and Android TV.'
+              --title 'Arctic Fuse 3 DEV 3.4.2.43 (Kodi installer)' \
+              --notes 'Arctic Fuse 3 DEV 3.4.2.43 introduces CinePanorama, an optional ultra-wide 690x240px fanart shelf with bottom-left editorial title, translucent dark footer and subtle native Kodi focus. It complements the approved CineVitrine 4:3 for genres, Card for nouveautés, Poster for Top 10 and Placard for resume. Select Style > CinePanorama for individual Home/Films/Series widgets, or import a separate test hubs ZIP changing only Recommandé pour vous and Histoires d amour to CinePanorama. No Emby paths, widget settings, previous styles, Spotlight controls or trailer service 0.4.8 were changed. GitHub CI includes structural style tests, native focus checks, hub ZIP and Emby trailer regression and ZIP mirror verification. Actual Kodi 22 visual validation is pending.'
           fi
           gh release upload "$tag" "$asset" --clobber
-          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.42.zip"
+          url="https://github.com/ntls2000/skin.arctic.fuse.3/releases/download/$tag/skin.arctic.fuse.3.dev-3.4.2.43.zip"
           curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 240 --output /tmp/release-skin.zip --write-out 'release_http=%{http_code} release_bytes=%{size_download}\n' "$url"
           cmp "$asset" /tmp/release-skin.zip
           unzip -tq /tmp/release-skin.zip
