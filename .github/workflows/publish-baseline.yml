@@ -33,7 +33,7 @@ jobs:
           SOURCE_REF = "origin/dev-kodi22"
           SRC_ID = "skin.arctic.fuse.3"
           DEV_ID = "skin.arctic.fuse.3.dev"
-          DEV_VER = "3.4.2.41"
+          DEV_VER = "3.4.2.42"
           out = Path("kodi-repository")
           target = out / DEV_ID
           target.mkdir(parents=True, exist_ok=True)
@@ -206,9 +206,9 @@ jobs:
               assert source_bytes.startswith(bytes.fromhex("89504e470d0a1a0a"))
               assert struct.unpack(">II", source_bytes[16:24]) == (96, 84)
               assert hashlib.sha256(source_bytes).hexdigest() == digest
-          # Only additive genre playlists: preserve the validated 3.4.2.40
-          # Spotlight, menu control, backup/import code, and Emby 0.4.8 intact.
-          prior_commit = "ff408692340a67d0959ab5bb2bd0cba4c46824d9"
+          # 3.4.2.42 adds only one opt-in widget style. All validated DEV
+          # Spotlight / Emby / hub-import code and 14 playlists remain frozen.
+          prior_commit = "de2ccdc828996710f53e95b15898124f4180660a"
           source_changes = subprocess.check_output([
               "git", "diff", "--name-only", prior_commit, SOURCE_REF
           ], text=True).splitlines()
@@ -228,8 +228,18 @@ jobs:
               "extras/hub/streaming/13-Series-ScienceFiction.xsp",
               "extras/hub/streaming/14-Series-Romance.xsp",
           ]
-          assert source_changes == expected_genres, (
-              "DEV 3.4.2.41 may only add 14 genre playlists", source_changes)
+          expected_style_paths = [
+              "1080i/Includes_Actions.xml",
+              "1080i/Includes_Constants.xml",
+              "1080i/Includes_Labels.xml",
+              "1080i/Includes_Layouts.xml",
+              "1080i/Includes_Lists.xml",
+              "1080i/Includes_Widgets.xml",
+              "shortcuts/generator/data/setup/widgets_include_row.xml",
+          ]
+          assert source_changes == expected_style_paths, (
+              "DEV 3.4.2.42 must modify only the 7 CineVitrine view/style files",
+              source_changes)
           for unchanged in (
               "1080i/Includes_Hubs.xml", "1080i/Includes_Home.xml",
               "1080i/Includes_SkinSettings.xml", "extras/scripts/hub_transfer.py",
@@ -254,7 +264,49 @@ jobs:
               assert playlist.findtext("limit") == "60"
               assert playlist.findtext("./order") == "dateadded"
           assert (movie_count, show_count) == (8, 6)
-          print("STREAMING GENRE ROWS PASSED: 8 movie / 6 TV dynamic XSP, preserves DEV 3.4.2.40 Spotlight and hubs importer")
+          # CineVitrine must be genuinely selectable and renderable in both
+          # Home and Hub widget rows, not merely a static visual mock-up.
+          constants = ET.fromstring(entries["1080i/Includes_Constants.xml"])
+          sizes = {c.get("name"): c.text for c in constants.findall("constant")}
+          assert (sizes["view_cinevitrine_item_w"], sizes["view_cinevitrine_item_h"]) == ("400", "300"), "4:3 tiles changed"
+          assert sizes["view_cinevitrine_itemlayout_w"] == "440"
+          assert sizes["view_cinevitrine_movement"] == "4"
+          layouts = ET.fromstring(entries["1080i/Includes_Layouts.xml"])
+          lists = ET.fromstring(entries["1080i/Includes_Lists.xml"])
+          widgets = ET.fromstring(entries["1080i/Includes_Widgets.xml"])
+          actions = ET.fromstring(entries["1080i/Includes_Actions.xml"])
+          labels = ET.fromstring(entries["1080i/Includes_Labels.xml"])
+          generator = ET.fromstring(entries["shortcuts/generator/data/setup/widgets_include_row.xml"])
+          lv = layouts.find("./include[@name='Layout_CineVitrine']")
+          li = lists.find("./include[@name='List_CineVitrine_Row']")
+          assert lv is not None and li is not None
+          assert len(layouts.findall("./include[@name='Layout_CineVitrine']")) == 1
+          assert len(lists.findall("./include[@name='List_CineVitrine_Row']")) == 1
+          assert li.findtext("./definition/include/param[@name='itemlayout_include']") == "Layout_CineVitrine"
+          assert li.findtext("./definition/include/param[@name='id']") == "$PARAM[id]"
+          assert li.findtext("./definition/include/param[@name='control']") == "$PARAM[control]"
+          assert li.find("./definition/include/nested") is not None, "Lost focus-navigation slots"
+          assert lv.findtext(".//include[@content='Object_Layout_Image_Rectangle']/param[@name='icon']") == "$VAR[Image_Card_Fanart]"
+          assert lv.find(".//include[@content='Object_ClearLogo_WithShadow']") is not None
+          assert lv.find(".//include[@content='Object_SelectBox']") is not None
+          assert lv.find(".//control[@type='label']") is not None
+          assert widgets.find("./include[@name='Widget_Busy_BlankItems__List_CineVitrine_Row']") is not None
+          assert widgets.find("./include[@name='Widget_Busy_Spinner_Height__List_CineVitrine_Row']") is not None
+          choose = actions.find("./variable[@name='Action_Shortcut_SetWidgetStyle']")
+          chosen_label = labels.find("./variable[@name='Label_Shortcut_Widget_Style']")
+          assert choose is not None and 'CinéVitrine=CineVitrine' in "".join(choose.itertext())
+          assert chosen_label is not None and any(v.text == 'CinéVitrine' for v in chosen_label.findall("value"))
+          rule = generator.find("./rules[@name='widget_include']")
+          assert rule is not None and any(
+              x.findtext("condition") == "{item_widget_style}==CineVitrine"
+              and x.findtext("value") == "List_CineVitrine_Row"
+              for x in rule.findall("rule")), "Generator did not map CineVitrine style"
+          for xsp in expected_genres:
+              original = subprocess.check_output(["git", "show", prior_commit + ":" + xsp])
+              assert entries[xsp] == original.replace(SRC_ID.encode(), DEV_ID.encode()), (
+                  "Existing user genre path changed", xsp)
+          print("CINEVITRINE PASSED: real 4:3 layout, selectable widget style, generator, labels, focus, busy/scroll, all Emby XSP and existing Spotlight unchanged")
+          print("STREAMING GENRE ROWS PASSED: 8 movie / 6 TV dynamic XSP, preserved from validated 3.4.2.41")
           assert '<label>Sauvegarder mes hubs (ZIP)</label>' in setting_source
           assert '<label>Restaurer mes hubs (ZIP)</label>' in setting_source
           assert 'RunScript(special://skin/extras/scripts/hub_transfer.py,export)' in setting_source
@@ -649,10 +701,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -f kodi-repository/skin.arctic.fuse.3.dev/ kodi-repository/service.skin.arctic.fuse.3.dev.trailers/ kodi-repository/addons.xml kodi-repository/addons.xml.md5
           if ! git diff --cached --quiet; then
-            git commit -m "feat(kodi): DEV 3.4.2.41 14 additive Netflix-style genre smart playlists, Emby service frozen"
+            git commit -m "feat(kodi): DEV 3.4.2.42 opt-in CineVitrine 4:3 widgets, unchanged Emby service and Spotlight"
             git push origin HEAD:kodi-repo
           fi
-          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.41.zip > /tmp/git-stored-skin.zip
+          git cat-file blob HEAD:kodi-repository/skin.arctic.fuse.3.dev/skin.arctic.fuse.3.dev-3.4.2.42.zip > /tmp/git-stored-skin.zip
           unzip -tq /tmp/git-stored-skin.zip
           echo "Published Git blob is a valid ZIP archive"
           git cat-file blob HEAD:kodi-repository/service.skin.arctic.fuse.3.dev.trailers/service.skin.arctic.fuse.3.dev.trailers-0.4.8.zip > /tmp/git-stored-service.zip
