@@ -356,7 +356,11 @@ jobs:
           assert p.find(".//control[@type='label']") is not None
           assert p.find(".//control[@type='image']/texture[@colordiffuse='B8000000']") is None, "Old heavy dark band remains"
           assert p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']").text == "common/poster_fade.png"
-          assert p.findtext(".//control[@type='image'][texture[@colordiffuse='BFFFFFFF']]/height") == "110"
+          gradient = p.find(".//control[@type='image']/texture[@colordiffuse='BFFFFFFF']")
+          assert gradient is not None
+          gradient_container = next((c for c in p.findall(".//control[@type='image']")
+                                     if c.find("texture") is gradient), None)
+          assert gradient_container is not None and gradient_container.findtext("height") == "110"
           badge_regular = p.find("./definition/control/control[2]/include[@content='Object_Indicator']")
           badge_focused = p.find("./definition/control/control[2]/include[@content='Object_SelectBox']")
           assert badge_regular is not None and badge_focused is not None
